@@ -11,7 +11,10 @@
       "Bash(./scripts/setup_databases.sh:*)",
       "Bash(source:*)",
       "Bash(docker exec:*)",
-      "Bash(docker cp:*)"
+      "Bash(docker cp:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:arxiv.org)"
     ]
   }
 }

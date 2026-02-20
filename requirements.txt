@@ -15,6 +15,10 @@ pandas>=2.1.0
 geopandas>=0.14.0
 numpy>=1.24.0
 
+# Open-Source Migration Tools
+data2neo>=1.4.3              # Schema mapping engine (ETH Zürich)
+great-expectations>=1.4.0    # Data validation framework
+
 # API and Web
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
@@ -23,8 +27,10 @@ httpx>=0.25.0
 # NLP and LLM (for Text2Cypher)
 openai>=1.0.0
 anthropic>=0.7.0
-langchain>=0.1.0
+langchain>=0.3.14
 langchain-openai>=0.0.2
+langchain-anthropic>=0.4.0  # Claude integration
+langchain-neo4j>=0.2.0       # Neo4j graph integration
 
 # Visualization and Reporting
 matplotlib>=3.8.0
