@@ -9,11 +9,13 @@ __author__ = "Your Name"
 __email__ = "your.email@nyu.edu"
 
 from .schema_analyzer import SchemaAnalyzer
-from .mapping_engine import MappingEngine
-from .data_migrator import DataMigrator
+# TODO: Import when implemented in Phase 2
+# from .mapping_engine import MappingEngine
+# TODO: Import when implemented in Phase 3
+# from .data_migrator import DataMigrator
 
 __all__ = [
     "SchemaAnalyzer",
-    "MappingEngine",
-    "DataMigrator",
+    # "MappingEngine",  # Phase 2
+    # "DataMigrator",   # Phase 3
 ]

@@ -111,6 +111,7 @@ class Config(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Ignore extra environment variables
 
 
 def load_config(config_path: Optional[Path] = None) -> Config:

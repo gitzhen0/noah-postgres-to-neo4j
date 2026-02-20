@@ -1,0 +1,243 @@
+{
+  "borough_summary": {
+    "name": "borough_summary",
+    "schema": "public",
+    "table_type": "entity",
+    "row_count": 4,
+    "columns": [
+      {
+        "name": "borough",
+        "data_type": "character varying",
+        "is_nullable": false,
+        "is_primary_key": true,
+        "is_foreign_key": false
+      },
+      {
+        "name": "total_zipcodes",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "total_projects",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "total_units",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "total_affordable_units",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "last_updated",
+        "data_type": "timestamp without time zone",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      }
+    ],
+    "primary_key": {
+      "name": "borough_summary_pkey",
+      "columns": [
+        "borough"
+      ]
+    },
+    "foreign_keys": []
+  },
+  "housing_projects": {
+    "name": "housing_projects",
+    "schema": "public",
+    "table_type": "entity",
+    "row_count": 20,
+    "columns": [
+      {
+        "name": "id",
+        "data_type": "integer",
+        "is_nullable": false,
+        "is_primary_key": true,
+        "is_foreign_key": false
+      },
+      {
+        "name": "project_id",
+        "data_type": "character varying",
+        "is_nullable": false,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "project_name",
+        "data_type": "text",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "borough",
+        "data_type": "character varying",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "zipcode",
+        "data_type": "character varying",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "street_address",
+        "data_type": "text",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "latitude",
+        "data_type": "numeric",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "longitude",
+        "data_type": "numeric",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "geom",
+        "data_type": "USER-DEFINED",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "completion_date",
+        "data_type": "date",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "total_units",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "affordable_units",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      }
+    ],
+    "primary_key": {
+      "name": "housing_projects_pkey",
+      "columns": [
+        "id"
+      ]
+    },
+    "foreign_keys": []
+  },
+  "zip_summary": {
+    "name": "zip_summary",
+    "schema": "public",
+    "table_type": "entity",
+    "row_count": 16,
+    "columns": [
+      {
+        "name": "zipcode",
+        "data_type": "character varying",
+        "is_nullable": false,
+        "is_primary_key": true,
+        "is_foreign_key": false
+      },
+      {
+        "name": "borough",
+        "data_type": "character varying",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "total_projects",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "total_units",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "total_affordable_units",
+        "data_type": "integer",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "avg_units_per_project",
+        "data_type": "numeric",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "center_lat",
+        "data_type": "numeric",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "center_lon",
+        "data_type": "numeric",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      },
+      {
+        "name": "last_updated",
+        "data_type": "timestamp without time zone",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "is_foreign_key": false
+      }
+    ],
+    "primary_key": {
+      "name": "zip_summary_pkey",
+      "columns": [
+        "zipcode"
+      ]
+    },
+    "foreign_keys": []
+  }
+}

@@ -4,7 +4,14 @@
       "Bash(pandoc:*)",
       "Bash(pdftotext:*)",
       "Bash(pip3 install:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(git commit:*)",
+      "Bash(command -v:*)",
+      "Bash(docker info:*)",
+      "Bash(./scripts/setup_databases.sh:*)",
+      "Bash(source:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker cp:*)"
     ]
   }
 }
