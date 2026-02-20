@@ -1,0 +1,353 @@
+metadata:
+  num_tables: 3
+  num_nodes: 3
+  num_relationships: 2
+  auto_generated: true
+spatial:
+  preserve_wkt: true
+  preserve_geojson: true
+  compute_centroids: true
+  compute_metrics: true
+  compute_bbox: true
+  use_neo4j_point: true
+  neighbors_threshold_km: 5.0
+nodes:
+- label: Zipcode
+  source_table: zipcodes
+  primary_property: zipcode
+  has_geometry: true
+  geometry_column: geometry
+  indexes:
+  - zipcode
+  - borough
+  merge_keys:
+  - zipcode
+  properties:
+  - name: zipcode
+    type: string
+    nullable: false
+    source_column: zipcode
+    source_type: varchar
+    transformation: null
+    default_value: null
+  - name: borough
+    type: string
+    nullable: true
+    source_column: borough
+    source_type: varchar
+    transformation: null
+    default_value: null
+  - name: median_rent_1br
+    type: float
+    nullable: true
+    source_column: median_rent_1br
+    source_type: numeric
+    transformation: null
+    default_value: null
+  - name: median_income
+    type: float
+    nullable: true
+    source_column: median_income
+    source_type: numeric
+    transformation: null
+    default_value: null
+  - name: center_lat
+    type: float
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_Y(ST_Centroid(geometry))
+    default_value: null
+  - name: center_lon
+    type: float
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_X(ST_Centroid(geometry))
+    default_value: null
+  - name: area_km2
+    type: float
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_Area(geometry::geography) / 1000000.0
+    default_value: null
+  - name: geometry_wkt
+    type: string
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_AsText(geometry)
+    default_value: null
+  - name: geometry_geojson
+    type: string
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_AsGeoJSON(geometry)
+    default_value: null
+  - name: perimeter_km
+    type: float
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_Perimeter(geometry::geography) / 1000.0
+    default_value: null
+  - name: bbox_xmin
+    type: float
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_XMin(geometry)
+    default_value: null
+  - name: bbox_ymin
+    type: float
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_YMin(geometry)
+    default_value: null
+  - name: bbox_xmax
+    type: float
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_XMax(geometry)
+    default_value: null
+  - name: bbox_ymax
+    type: float
+    nullable: true
+    source_column: geometry
+    source_type: null
+    transformation: ST_YMax(geometry)
+    default_value: null
+- label: Building
+  source_table: buildings
+  primary_property: bbl
+  has_geometry: true
+  geometry_column: geom
+  indexes:
+  - zipcode
+  merge_keys:
+  - bbl
+  properties:
+  - name: bbl
+    type: string
+    nullable: false
+    source_column: bbl
+    source_type: varchar
+    transformation: null
+    default_value: null
+  - name: address
+    type: string
+    nullable: true
+    source_column: address
+    source_type: text
+    transformation: null
+    default_value: null
+  - name: zipcode
+    type: string
+    nullable: true
+    source_column: zipcode
+    source_type: varchar
+    transformation: null
+    default_value: null
+  - name: year_built
+    type: integer
+    nullable: true
+    source_column: year_built
+    source_type: integer
+    transformation: null
+    default_value: null
+  - name: num_floors
+    type: integer
+    nullable: true
+    source_column: num_floors
+    source_type: integer
+    transformation: null
+    default_value: null
+  - name: center_lat
+    type: float
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_Y(ST_Centroid(geom))
+    default_value: null
+  - name: center_lon
+    type: float
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_X(ST_Centroid(geom))
+    default_value: null
+  - name: area_km2
+    type: float
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_Area(geom::geography) / 1000000.0
+    default_value: null
+  - name: geometry_wkt
+    type: string
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_AsText(geom)
+    default_value: null
+  - name: geometry_geojson
+    type: string
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_AsGeoJSON(geom)
+    default_value: null
+  - name: perimeter_km
+    type: float
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_Perimeter(geom::geography) / 1000.0
+    default_value: null
+  - name: bbox_xmin
+    type: float
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_XMin(geom)
+    default_value: null
+  - name: bbox_ymin
+    type: float
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_YMin(geom)
+    default_value: null
+  - name: bbox_xmax
+    type: float
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_XMax(geom)
+    default_value: null
+  - name: bbox_ymax
+    type: float
+    nullable: true
+    source_column: geom
+    source_type: null
+    transformation: ST_YMax(geom)
+    default_value: null
+- label: HousingProject
+  source_table: housing_projects
+  primary_property: project_id
+  has_geometry: false
+  geometry_column: null
+  indexes:
+  - project_name
+  - postcode
+  merge_keys:
+  - project_id
+  properties:
+  - name: project_id
+    type: string
+    nullable: false
+    source_column: project_id
+    source_type: varchar
+    transformation: null
+    default_value: null
+  - name: project_name
+    type: string
+    nullable: true
+    source_column: project_name
+    source_type: text
+    transformation: null
+    default_value: null
+  - name: total_units
+    type: integer
+    nullable: true
+    source_column: total_units
+    source_type: integer
+    transformation: null
+    default_value: null
+  - name: postcode
+    type: string
+    nullable: true
+    source_column: postcode
+    source_type: varchar
+    transformation: null
+    default_value: null
+relationships:
+- type: LOCATED_IN
+  from_label: Building
+  to_label: Zipcode
+  source_type: fk
+  source_table: buildings
+  from_column: zipcode
+  to_column: zipcode
+  computation_query: null
+  bidirectional: false
+  properties: []
+- type: HAS_ZIPCODE
+  from_label: HousingProject
+  to_label: Zipcode
+  source_type: fk
+  source_table: housing_projects
+  from_column: postcode
+  to_column: zipcode
+  computation_query: null
+  bidirectional: false
+  properties: []
+- type: NEIGHBORS
+  from_label: Zipcode
+  to_label: Zipcode
+  source_type: spatial
+  source_table: null
+  from_column: null
+  to_column: null
+  computation_query: "SELECT\n            a.zipcode AS from_id,\n            b.zipcode\
+    \ AS to_id,\n            ST_Distance(\n                ST_Centroid(a.geometry)::geography,\n\
+    \                ST_Centroid(b.geometry)::geography\n            ) / 1000.0 AS\
+    \ distance_km,\n            ST_Touches(a.geometry, b.geometry) AS is_adjacent\n\
+    \        FROM zipcodes a\n        JOIN zipcodes b\n            ON a.zipcode <\
+    \ b.zipcode\n            AND ST_DWithin(\n                a.geometry::geography,\n\
+    \                b.geometry::geography,\n                5000.0\n            )\n\
+    \        WHERE a.geometry IS NOT NULL\n          AND b.geometry IS NOT NULL\n\
+    \          \n            AND ST_Distance(\n                ST_Centroid(a.geometry),\n\
+    \                ST_Centroid(b.geometry)\n            )::numeric / 1000.0 <= 5.0\n\
+    \            \n        ORDER BY a.zipcode, distance_km"
+  bidirectional: true
+  properties:
+  - name: distance_km
+    type: float
+    nullable: true
+    source_column: distance_km
+  - name: is_adjacent
+    type: boolean
+    nullable: true
+    source_column: is_adjacent
+- type: NEIGHBORS
+  from_label: Building
+  to_label: Building
+  source_type: spatial
+  source_table: null
+  from_column: null
+  to_column: null
+  computation_query: "SELECT\n            a.bbl AS from_id,\n            b.bbl AS\
+    \ to_id,\n            ST_Distance(\n                ST_Centroid(a.geom)::geography,\n\
+    \                ST_Centroid(b.geom)::geography\n            ) / 1000.0 AS distance_km,\n\
+    \            ST_Touches(a.geom, b.geom) AS is_adjacent\n        FROM buildings\
+    \ a\n        JOIN buildings b\n            ON a.bbl < b.bbl\n            AND ST_DWithin(\n\
+    \                a.geom::geography,\n                b.geom::geography,\n    \
+    \            5000.0\n            )\n        WHERE a.geom IS NOT NULL\n       \
+    \   AND b.geom IS NOT NULL\n          \n            AND ST_Distance(\n       \
+    \         ST_Centroid(a.geom),\n                ST_Centroid(b.geom)\n        \
+    \    )::numeric / 1000.0 <= 5.0\n            \n        ORDER BY a.bbl, distance_km"
+  bidirectional: true
+  properties:
+  - name: distance_km
+    type: float
+    nullable: true
+    source_column: distance_km
+  - name: is_adjacent
+    type: boolean
+    nullable: true
+    source_column: is_adjacent

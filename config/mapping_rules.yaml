@@ -1,0 +1,493 @@
+# Mapping Rules for NOAH Database (Real Yue Yu Schema)
+# PostgreSQL to Neo4j Graph Schema
+# Source: https://github.com/Becky0713/NOAH
+# Data: NYC Affordable Housing Production by Building (Socrata hg8x-zxpr)
+
+metadata:
+  version: "2.0"
+  database: "noah_housing"
+  description: "NYC NOAH affordable housing knowledge graph (real schema)"
+  author: "NOAH Converter"
+
+# Spatial data handling configuration
+spatial:
+  preserve_wkt: true
+  preserve_geojson: false
+  compute_centroids: true
+  compute_metrics: false
+  compute_bbox: false
+  use_neo4j_point: true
+  neighbors_threshold_km: 5.0
+
+# =============================================================================
+# NODE TYPE DEFINITIONS
+# =============================================================================
+nodes:
+
+  # ---------------------------------------------------------------------------
+  # HousingProject: Core node from Socrata API (hg8x-zxpr)
+  # Each row = one affordable housing project/building in NYC
+  # ---------------------------------------------------------------------------
+  - label: HousingProject
+    source_table: housing_projects
+    primary_property: project_id
+    has_geometry: true
+    geometry_column: geom
+    indexes:
+      - borough
+      - postcode
+      - project_start_date
+      - total_units
+    merge_keys:
+      - project_id
+    properties:
+      - name: project_id
+        type: string
+        nullable: false
+        source_column: project_id
+        source_type: varchar
+
+      - name: project_name
+        type: string
+        nullable: true
+        source_column: project_name
+        source_type: text
+
+      - name: building_id
+        type: string
+        nullable: true
+        source_column: building_id
+        source_type: varchar
+
+      - name: house_number
+        type: string
+        nullable: true
+        source_column: house_number
+        source_type: varchar
+
+      - name: street_name
+        type: string
+        nullable: true
+        source_column: street_name
+        source_type: varchar
+
+      - name: borough
+        type: string
+        nullable: true
+        source_column: borough
+        source_type: varchar
+
+      - name: postcode
+        type: string
+        nullable: true
+        source_column: postcode
+        source_type: varchar
+
+      - name: bbl
+        type: string
+        nullable: true
+        source_column: bbl
+        source_type: varchar
+
+      - name: bin
+        type: string
+        nullable: true
+        source_column: bin
+        source_type: varchar
+
+      - name: community_board
+        type: string
+        nullable: true
+        source_column: community_board
+        source_type: varchar
+
+      - name: council_district
+        type: integer
+        nullable: true
+        source_column: council_district
+        source_type: integer
+
+      - name: census_tract
+        type: string
+        nullable: true
+        source_column: census_tract
+        source_type: varchar
+
+      - name: neighborhood_tabulation_area
+        type: string
+        nullable: true
+        source_column: neighborhood_tabulation_area
+        source_type: varchar
+
+      - name: latitude
+        type: float
+        nullable: true
+        source_column: latitude
+        source_type: decimal
+
+      - name: longitude
+        type: float
+        nullable: true
+        source_column: longitude
+        source_type: decimal
+
+      - name: project_start_date
+        type: date
+        nullable: true
+        source_column: project_start_date
+        source_type: date
+
+      - name: project_completion_date
+        type: date
+        nullable: true
+        source_column: project_completion_date
+        source_type: date
+
+      - name: building_completion_date
+        type: date
+        nullable: true
+        source_column: building_completion_date
+        source_type: date
+
+      - name: reporting_construction_type
+        type: string
+        nullable: true
+        source_column: reporting_construction_type
+        source_type: varchar
+
+      - name: extended_affordability_status
+        type: string
+        nullable: true
+        source_column: extended_affordability_status
+        source_type: varchar
+
+      - name: prevailing_wage_status
+        type: string
+        nullable: true
+        source_column: prevailing_wage_status
+        source_type: varchar
+
+      # Income-restricted unit counts (from NYC HPD/HUD definitions)
+      - name: extremely_low_income_units
+        type: integer
+        nullable: true
+        source_column: extremely_low_income_units
+        source_type: integer
+
+      - name: very_low_income_units
+        type: integer
+        nullable: true
+        source_column: very_low_income_units
+        source_type: integer
+
+      - name: low_income_units
+        type: integer
+        nullable: true
+        source_column: low_income_units
+        source_type: integer
+
+      - name: moderate_income_units
+        type: integer
+        nullable: true
+        source_column: moderate_income_units
+        source_type: integer
+
+      - name: middle_income_units
+        type: integer
+        nullable: true
+        source_column: middle_income_units
+        source_type: integer
+
+      - name: other_income_units
+        type: integer
+        nullable: true
+        source_column: other_income_units
+        source_type: integer
+
+      # Bedroom unit counts
+      - name: studio_units
+        type: integer
+        nullable: true
+        source_column: studio_units
+        source_type: integer
+
+      - name: units_1br
+        type: integer
+        nullable: true
+        source_column: _1_br_units
+        source_type: integer
+
+      - name: units_2br
+        type: integer
+        nullable: true
+        source_column: _2_br_units
+        source_type: integer
+
+      - name: units_3br
+        type: integer
+        nullable: true
+        source_column: _3_br_units
+        source_type: integer
+
+      - name: units_4br
+        type: integer
+        nullable: true
+        source_column: _4_br_units
+        source_type: integer
+
+      - name: units_5br
+        type: integer
+        nullable: true
+        source_column: _5_br_units
+        source_type: integer
+
+      - name: units_6br
+        type: integer
+        nullable: true
+        source_column: _6_br_units
+        source_type: integer
+
+      - name: unknown_br_units
+        type: integer
+        nullable: true
+        source_column: unknown_br_units
+        source_type: integer
+
+      # Summary unit counts
+      - name: counted_rental_units
+        type: integer
+        nullable: true
+        source_column: counted_rental_units
+        source_type: integer
+
+      - name: counted_homeownership_units
+        type: integer
+        nullable: true
+        source_column: counted_homeownership_units
+        source_type: integer
+
+      - name: all_counted_units
+        type: integer
+        nullable: true
+        source_column: all_counted_units
+        source_type: integer
+
+      - name: total_units
+        type: integer
+        nullable: true
+        source_column: total_units
+        source_type: integer
+
+      # Spatial properties (auto-generated from PostGIS geom column)
+      - name: center_lat
+        type: float
+        nullable: true
+        source_column: geom
+        transformation: "ST_Y(ST_Centroid(geom))"
+
+      - name: center_lon
+        type: float
+        nullable: true
+        source_column: geom
+        transformation: "ST_X(ST_Centroid(geom))"
+
+  # ---------------------------------------------------------------------------
+  # ZipCode: NYC ZIP code areas with geometry (178 ZIP codes)
+  # ---------------------------------------------------------------------------
+  - label: ZipCode
+    source_table: zip_shapes
+    primary_property: zip_code
+    has_geometry: true
+    geometry_column: geom
+    indexes:
+      - borough
+    merge_keys:
+      - zip_code
+    properties:
+      - name: zip_code
+        type: string
+        nullable: false
+        source_column: zip_code
+        source_type: varchar
+
+      - name: borough
+        type: string
+        nullable: true
+        source_column: borough
+        source_type: varchar
+
+      - name: center_lat
+        type: float
+        nullable: true
+        source_column: geom
+        transformation: "ST_Y(ST_Centroid(geom))"
+
+      - name: center_lon
+        type: float
+        nullable: true
+        source_column: geom
+        transformation: "ST_X(ST_Centroid(geom))"
+
+  # ---------------------------------------------------------------------------
+  # CensusTract: Census tract level rent burden data (766 tracts)
+  # Source: ACS 5-Year Estimates, Table B25070
+  # ---------------------------------------------------------------------------
+  - label: CensusTract
+    source_table: rent_burden
+    primary_property: geo_id
+    has_geometry: true
+    geometry_column: geometry
+    indexes:
+      - rent_burden_rate
+    merge_keys:
+      - geo_id
+    properties:
+      - name: geo_id
+        type: string
+        nullable: false
+        source_column: geo_id
+        source_type: text
+
+      - name: tract_name
+        type: string
+        nullable: true
+        source_column: tract_name
+        source_type: text
+
+      - name: rent_burden_rate
+        type: float
+        nullable: true
+        source_column: rent_burden_rate
+        source_type: decimal
+
+      - name: severe_burden_rate
+        type: float
+        nullable: true
+        source_column: severe_burden_rate
+        source_type: decimal
+
+  # ---------------------------------------------------------------------------
+  # AffordabilityZone: ZIP-level aggregated affordability metrics
+  # Derived from ACS via tract-to-ZIP crosswalk (152 ZIP codes)
+  # ---------------------------------------------------------------------------
+  - label: AffordabilityZone
+    source_table: noah_affordability_analysis
+    primary_property: zip_code
+    has_geometry: false
+    indexes:
+      - rent_burden_rate
+      - median_income_usd
+    merge_keys:
+      - zip_code
+    properties:
+      - name: zip_code
+        type: string
+        nullable: false
+        source_column: zip_code
+        source_type: varchar
+
+      - name: median_income_usd
+        type: float
+        nullable: true
+        source_column: median_income_usd
+        source_type: numeric
+
+      - name: rent_burden_rate
+        type: float
+        nullable: true
+        source_column: rent_burden_rate
+        source_type: numeric
+
+      - name: severe_burden_rate
+        type: float
+        nullable: true
+        source_column: severe_burden_rate
+        source_type: numeric
+
+      - name: median_rent_usd
+        type: float
+        nullable: true
+        source_column: median_rent_usd
+        source_type: numeric
+
+      - name: rent_to_income_ratio
+        type: float
+        nullable: true
+        source_column: rent_to_income_ratio
+        source_type: numeric
+
+# =============================================================================
+# RELATIONSHIP TYPE DEFINITIONS
+# =============================================================================
+relationships:
+
+  # HousingProject --[LOCATED_IN]--> ZipCode
+  # FK relationship: housing_projects.postcode -> zip_shapes.zip_code
+  - type: LOCATED_IN
+    from_label: HousingProject
+    to_label: ZipCode
+    source_type: foreign_key
+    source_table: housing_projects
+    from_column: postcode
+    to_column: zip_code
+    bidirectional: false
+    properties: []
+
+  # HousingProject --[IN_CENSUS_TRACT]--> CensusTract
+  # Computed from census_tract field in housing_projects
+  - type: IN_CENSUS_TRACT
+    from_label: HousingProject
+    to_label: CensusTract
+    source_type: computed
+    source_table: housing_projects
+    from_column: census_tract
+    to_column: geo_id
+    computation_query: |
+      SELECT h.project_id as from_id, r.geo_id as to_id
+      FROM housing_projects h
+      JOIN rent_burden r ON r.tract_name LIKE '%' || h.census_tract || '%'
+      WHERE h.census_tract IS NOT NULL AND h.census_tract != ''
+    bidirectional: false
+    properties: []
+
+  # ZipCode --[HAS_AFFORDABILITY_DATA]--> AffordabilityZone
+  # FK relationship: zip_shapes.zip_code -> noah_affordability_analysis.zip_code
+  - type: HAS_AFFORDABILITY_DATA
+    from_label: ZipCode
+    to_label: AffordabilityZone
+    source_type: foreign_key
+    source_table: noah_affordability_analysis
+    from_column: zip_code
+    to_column: zip_code
+    bidirectional: false
+    properties: []
+
+  # ZipCode --[NEIGHBORS]--> ZipCode
+  # Spatial relationship based on geographic adjacency
+  - type: NEIGHBORS
+    from_label: ZipCode
+    to_label: ZipCode
+    source_type: spatial
+    bidirectional: true
+    computation_query: |
+      SELECT
+        a.zip_code AS from_zip,
+        b.zip_code AS to_zip,
+        ROUND(
+          (ST_Distance(
+            ST_Centroid(a.geom::geography),
+            ST_Centroid(b.geom::geography)
+          ) / 1000.0)::numeric,
+          2
+        ) AS distance_km
+      FROM zip_shapes a
+      JOIN zip_shapes b
+        ON ST_Touches(a.geom, b.geom)
+        OR ST_DWithin(a.geom::geography, b.geom::geography, 500)
+      WHERE a.zip_code < b.zip_code
+    properties:
+      - name: distance_km
+        type: float
+        nullable: true
+        source_column: distance_km
+        source_type: numeric

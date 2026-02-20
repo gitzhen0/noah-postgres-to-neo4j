@@ -34,6 +34,17 @@
 * 分析schema：`python main.py analyze`
 * 检查状态：`python main.py status`
 
+## 数据库凭证
+* Census API Key: `e1840402fd3183c71e5a783fd086364eed69776d`
+* PostgreSQL: localhost:5432, db=noah_housing, user=postgres, password=password123
+* Neo4j: bolt://localhost:7687, user=neo4j, password=password123
+
+## 待解决的数据缺口
+* **StreetEasy 数据缺失**: `noah_streeteasy_medianrent_2025_10` 表是 Yue 手动从 StreetEasy 收集的私有数据，无法直接获取。
+  * 替代方案候选：Zillow Research ZORI（公开下载）或 ACS B25031（中位租金按卧室数，Census API 可获取）
+  * 当前状态：表存在但为空（0行）
+  * 后续决策：确认用 ACS B25031 替代还是找 Zillow ZORI CSV
+
 ## 代码风格
 * 使用 Black 格式化代码
 * 使用 Ruff 进行 linting
