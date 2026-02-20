@@ -1,0 +1,122 @@
+# NOAH PostgreSQL to Neo4j Converter Configuration
+# Copy this file to config.yaml and update with your credentials
+
+# Source Database (PostgreSQL)
+source_db:
+  type: postgresql
+  host: localhost
+  port: 5432
+  database: noah_housing
+  user: postgres
+  password: your_password_here
+  schema: public
+  # For Yue Yu's implementation, may need to connect to remote instance
+  # host: render-postgres-url.example.com
+
+# Target Database (Neo4j)
+target_db:
+  type: neo4j
+  uri: bolt://localhost:7687
+  user: neo4j
+  password: your_password_here
+  database: neo4j
+
+# Schema Analyzer Settings
+schema_analyzer:
+  # Identify junction/join tables
+  detect_join_tables: true
+  # Foreign key analysis depth
+  fk_depth: 3
+  # Include spatial columns
+  analyze_geometry: true
+  # Tables to exclude from analysis
+  exclude_tables:
+    - spatial_ref_sys
+    - geography_columns
+    - geometry_columns
+
+# Mapping Engine Settings
+mapping:
+  # Conversion rules
+  rules:
+    # Table -> Node mapping
+    entity_tables:
+      - zipcode
+      - building
+      - demographic_indicator
+    # Join tables -> Relationship mapping
+    junction_tables: []
+  # Node label naming convention
+  node_label_format: "PascalCase"  # or "UPPERCASE"
+  # Relationship type naming convention
+  relationship_type_format: "SCREAMING_SNAKE_CASE"
+  # Property naming convention
+  property_format: "snake_case"
+
+# Data Migration Settings
+migration:
+  # Batch size for data loading
+  batch_size: 1000
+  # Enable parallel processing
+  parallel: true
+  # Number of workers
+  workers: 4
+  # Skip validation during migration (faster but riskier)
+  skip_validation: false
+  # Create indexes after loading
+  create_indexes: true
+  # Handle NULL values
+  null_handling: "skip"  # or "empty_string", "default_value"
+
+# Validation Settings
+validation:
+  # Check row counts
+  validate_counts: true
+  # Check referential integrity
+  validate_relationships: true
+  # Sample percentage for data validation
+  sample_percentage: 10
+  # Generate validation report
+  generate_report: true
+
+# Text2Cypher Settings
+text2cypher:
+  # LLM Provider
+  provider: "anthropic"  # or "openai"
+  # Model name
+  model: "claude-sonnet-4-5-20250929"
+  # API key (or use environment variable ANTHROPIC_API_KEY)
+  api_key: ${ANTHROPIC_API_KEY}
+  # Temperature for generation
+  temperature: 0.0
+  # Max tokens
+  max_tokens: 2000
+  # Enable schema-aware prompting
+  schema_aware: true
+
+# Logging Settings
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/noah_converter.log
+  console: true
+
+# Output Settings
+output:
+  # Directory for Cypher scripts
+  cypher_dir: outputs/cypher
+  # Directory for validation reports
+  reports_dir: outputs/reports
+  # Directory for validation results
+  validation_dir: outputs/validation
+  # Export format for validation data
+  export_format: "json"  # or "csv"
+
+# Performance Settings
+performance:
+  # Enable query caching
+  cache_queries: true
+  # Connection pool size
+  pool_size: 10
+  # Query timeout (seconds)
+  timeout: 300

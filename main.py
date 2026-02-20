@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""
+NOAH PostgreSQL to Neo4j Converter - Main Entry Point
+
+This is the main CLI interface for the NOAH database conversion tool.
+"""
+
+import sys
+from pathlib import Path
+import click
+from rich.console import Console
+from rich.table import Table as RichTable
+
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+from noah_converter.utils.config import load_config
+from noah_converter.utils.logger import setup_logger
+from noah_converter.utils.db_connection import PostgreSQLConnection, Neo4jConnection
+from noah_converter.schema_analyzer import SchemaAnalyzer
+
+console = Console()
+
+
+@click.group()
+@click.option("--config", type=click.Path(exists=True), help="Path to config file")
+@click.option("--verbose", is_flag=True, help="Enable verbose logging")
+@click.pass_context
+def cli(ctx, config, verbose):
+    """NOAH PostgreSQL to Neo4j Converter CLI"""
+    ctx.ensure_object(dict)
+
+    # Load configuration
+    config_path = Path(config) if config else None
+    ctx.obj["config"] = load_config(config_path)
+
+    # Setup logging
+    log_level = "DEBUG" if verbose else ctx.obj["config"].logging.level
+    setup_logger(
+        log_file=ctx.obj["config"].logging.file,
+        level=log_level,
+        console=ctx.obj["config"].logging.console,
+    )
+
+
+@cli.command()
+@click.option("--schema", default="public", help="PostgreSQL schema to analyze")
+@click.option("--export", type=click.Path(), help="Export schema to JSON file")
+@click.pass_context
+def analyze(ctx, schema, export):
+    """Analyze PostgreSQL database schema"""
+    config = ctx.obj["config"]
+
+    console.print("[bold blue]Starting schema analysis...[/bold blue]")
+
+    # Connect to PostgreSQL
+    pg_conn = PostgreSQLConnection(config.source_db)
+
+    # Create analyzer
+    analyzer = SchemaAnalyzer(pg_conn, config.schema_analyzer)
+
+    # Analyze schema
+    tables = analyzer.analyze(schema)
+
+    # Display results
+    _display_schema_summary(tables)
+
+    # Export if requested
+    if export:
+        analyzer.export_schema(export)
+        console.print(f"[green]✓[/green] Schema exported to: {export}")
+
+    pg_conn.close()
+
+
+@cli.command()
+@click.pass_context
+def generate_mapping(ctx):
+    """Generate RDBMS to graph mapping"""
+    console.print("[bold yellow]Mapping generation not yet implemented[/bold yellow]")
+    console.print("This will analyze the schema and create node/relationship mappings")
+
+
+@cli.command()
+@click.option("--dry-run", is_flag=True, help="Preview migration without executing")
+@click.pass_context
+def migrate(ctx, dry_run):
+    """Migrate data from PostgreSQL to Neo4j"""
+    if dry_run:
+        console.print("[bold yellow]Dry run mode - no changes will be made[/bold yellow]")
+    console.print("[bold yellow]Data migration not yet implemented[/bold yellow]")
+
+
+@cli.command()
+@click.pass_context
+def validate(ctx):
+    """Validate migrated data"""
+    console.print("[bold yellow]Validation not yet implemented[/bold yellow]")
+
+
+@cli.command()
+@click.pass_context
+def status(ctx):
+    """Show connection status and database info"""
+    config = ctx.obj["config"]
+
+    console.print("[bold blue]Database Connection Status[/bold blue]\n")
+
+    # Test PostgreSQL connection
+    try:
+        pg_conn = PostgreSQLConnection(config.source_db)
+        tables = pg_conn.get_table_names()
+        console.print(f"[green]✓[/green] PostgreSQL: Connected ({len(tables)} tables)")
+        pg_conn.close()
+    except Exception as e:
+        console.print(f"[red]✗[/red] PostgreSQL: Connection failed - {e}")
+
+    # Test Neo4j connection
+    try:
+        neo4j_conn = Neo4jConnection(config.target_db)
+        node_count = neo4j_conn.get_node_count()
+        rel_count = neo4j_conn.get_relationship_count()
+        console.print(f"[green]✓[/green] Neo4j: Connected ({node_count} nodes, {rel_count} relationships)")
+        neo4j_conn.close()
+    except Exception as e:
+        console.print(f"[red]✗[/red] Neo4j: Connection failed - {e}")
+
+
+def _display_schema_summary(tables: dict):
+    """Display schema analysis summary"""
+    table = RichTable(title="Schema Analysis Summary")
+    table.add_column("Table Name", style="cyan")
+    table.add_column("Type", style="magenta")
+    table.add_column("Columns", justify="right", style="green")
+    table.add_column("Rows", justify="right", style="yellow")
+    table.add_column("FKs", justify="right", style="blue")
+
+    for table_name, table_obj in tables.items():
+        table.add_row(
+            table_name,
+            table_obj.table_type.value,
+            str(len(table_obj.columns)),
+            str(table_obj.row_count or "N/A"),
+            str(len(table_obj.foreign_keys)),
+        )
+
+    console.print(table)
+
+
+if __name__ == "__main__":
+    cli(obj={})

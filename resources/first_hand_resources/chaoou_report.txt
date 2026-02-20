@@ -1,0 +1,1747 @@
+NOAH Information Dashboard: A Proof-ofConcept Housing Affordability Analytics
+Tool for Urban Labs
+Applied Project Final Report
+By
+
+Chaoou Zhang
+Fall, 2025
+A paper submitted in partial fulfillment of the requirements for the degree of
+Master of Science in Management and Systems
+at the
+Division of Programs in Business
+School of Professional Studies
+New York University
+
+1
+
+Table of Contents
+Declaration ...................................................................................................................................... 3
+Acknowledgements ......................................................................................................................... 4
+Abstract ........................................................................................................................................... 5
+Abbreviations and Definitions ........................................................................................................ 6
+Introduction ..................................................................................................................................... 7
+Project Objectives and Metrics ....................................................................................................... 8
+Alternate Solutions Evaluated......................................................................................................... 9
+Literature Survey .......................................................................................................................... 11
+Approach and Methodology ......................................................................................................... 15
+Results ........................................................................................................................................... 17
+Issues Encountered........................................................................................................................ 21
+Lessons Learned............................................................................................................................ 22
+Conclusion and Further Work ....................................................................................................... 23
+References ..................................................................................................................................... 25
+Appendix A - Project Acceptance Document ............................................................................... 27
+Appendix B - Project Sponsor Agreement.................................................................................... 29
+Appendix C – Functional Requirements Specifications ............................................................... 33
+Appendix D - Project Plan ............................................................................................................ 37
+Appendix E - Risk Management Plan ........................................................................................... 40
+Appendix F – Organizational Change Management Plan............................................................. 43
+Appendix G – Technology Trial Plan ........................................................................................... 46
+Appendix H - Status Reports ........................................................................................................ 51
+Appendix I - Annotated Bibliography .......................................................................................... 58
+
+2
+
+Declaration
+I, Chaoou Zhang, declare that this project report submitted by me to the School of Professional
+Studies, New York University in partial fulfillment of the requirement for the award of the
+degree of Master of Science in Management and Systems is a record of project work carried out
+by me under the guidance of Dr. Andres Fortino, NYU Clinical Assistant Professor of
+Management and Systems.
+I grant powers of discretion to the Division of Programs in Business, School of Professional
+Studies, and New York University to allow this report to be copied in part or in full without
+further reference to me. The permission covers only copies made for study purposes or for
+inclusion in Division of Programs in Business, School of Professional Studies, and New York
+University research publications, subject to normal conditions of acknowledgment.
+I further declare that the work reported in this project has not been submitted and will not be
+submitted, either in part or in full, for the award of any other degree or diploma in this institute
+or any other institute or university.
+
+3
+
+Acknowledgments
+I would like to express my sincere gratitude to my project sponsor, Thomas Jordan and Cameron
+Benso and the Urban Labs team, for their guidance, constructive feedback, and domain expertise
+throughout this project. Their willingness to share practical challenges around Naturally
+Occurring Affordable Housing (NOAH) in New York City made this work both meaningful and
+impactful.
+I am also grateful to Dr. Andres Fortino for his continuous support, practical advice, and clear
+expectations for the applied project, as well as to the faculty in the Management and Systems
+program whose courses provided the technical, analytical, and project management foundations
+that made this project possible.
+
+4
+
+Abstract
+New York City faces increasing pressure on naturally occurring affordable housing (NOAH), yet
+the data needed to understand where affordable units exist, how they are changing over time, and
+which communities are most at risk is scattered across multiple open-data portals and file
+formats. Urban Labs currently relies on manual processes and ad hoc spreadsheets to assemble
+housing, income, and neighborhood indicators, which makes it difficult to answer policy
+questions in a timely and consistent way.
+This project addresses that problem by designing and implementing a proof-of-concept NOAH
+Information Dashboard for Urban Labs. The goal is to create an integrated data foundation and a
+working analytics prototype that consolidates key New York City housing and cost-of-living
+datasets into a single, reusable tool. The specific aims are to (1) integrate and clean multiple open
+datasets, (2) design a relational database and data-access layer, (3) build an interactive web
+dashboard with maps and charts, and (4) provide automation scripts and documentation to
+support ongoing use.
+The proof-of-concept was implemented using Python-based data pipelines, a
+PostgreSQL/PostGIS database, and a Streamlit web application deployed to the cloud. A
+technology trial compared the prototype against the current manual workflow using metrics such
+as data preparation time and perceived usability. The results show that the integrated pipeline
+and dashboard can substantially reduce manual data wrangling, provide more consistent
+geographic coverage at the ZIP code and, where possible, building level, and improve the
+visibility of NOAH-related indicators for Urban Labs analysts.
+The project concludes that a centralized NOAH information dashboard is a viable and valuable
+direction for Urban Labs. It demonstrates how open data can be turned into an operational
+decision-support tool for affordable housing analysis. Future work could expand the geographic
+and temporal coverage of the datasets, add forecasting and risk-scoring models, and harden the
+prototype into a production-quality system supporting broader stakeholders across the housing
+ecosystem.
+
+5
+
+Abbreviations and Definitions
+ACS – American Community Survey
+API – Application Programming Interface
+HUD – U.S. Department of Housing and Urban Development
+NOAH – Naturally Occurring Affordable Housing
+NYC – New York City
+POC – Proof of Concept
+ZCTA – ZIP Code Tabulation Area
+
+6
+
+Introduction
+New York City’s housing market presents acute affordability challenges for low- and moderateincome households. While subsidized housing programs are heavily studied, a large share of
+affordable units exists in the private market as Naturally Occurring Affordable Housing
+(NOAH). These units are particularly vulnerable to rent increases, speculative investment, and
+redevelopment, yet the data needed to monitor NOAH conditions is fragmented across multiple
+NYC Open Data, Census/ACS, PLUTO, and related sources.
+Urban Labs, the sponsor of this project, is a research and analytics organization that works with
+policymakers and community stakeholders on housing and cost-of-living issues in New York
+City. To support their NOAH work, Urban Labs needs a repeatable way to bring together
+disparate housing, socioeconomic, and building-level datasets, and to visualize them in an
+accessible, geography-based tool.
+Problem. Currently, Urban Labs relies on manual download, cleaning, and merging of datasets in
+spreadsheets. This process is time-consuming, error-prone, and difficult to reproduce. It also
+makes it hard to answer new questions or update analyses when new data is released.
+Approach. This applied project develops a proof-of-concept (POC) NOAH Information
+Dashboard: an integrated data foundation, a relational database, automated data pipelines, and a
+Streamlit web application that provides interactive maps and charts for NOAH-related indicators
+at the ZIP/ZCTA and selected building levels.
+Core Technology. The solution combines (1) Python for data ingestion, cleaning, and
+transformation; (2) PostgreSQL/PostGIS for structured storage and spatial queries; and (3)
+Streamlit for quickly building and deploying a lightweight web dashboard suitable for prototype
+use with Urban Labs analysts.
+Benefits. For the sponsor, the POC aims to (a) reduce manual data-wrangling effort, (b) improve
+consistency and documentation of NOAH datasets, and (c) provide a more intuitive interface for
+exploring neighborhood conditions and potential NOAH hotspots.
+Research Question. The project addresses the question: Can an integrated, automated data
+pipeline and web dashboard materially improve Urban Labs’ ability to monitor naturally
+occurring affordable housing compared to the current manual, spreadsheet-based workflow?
+Sponsor and Importance of Project. The project sponsor is Thomas Jordan at Urban Labs, a nonprofit research organization focused on urban policy and housing. The NOAH Information
+Dashboard is important to the sponsor because it directly supports their mission: identifying atrisk NOAH units, understanding neighborhood vulnerability, and informing policy and
+advocacy. A working POC gives Urban Labs an actionable starting point they can extend after
+the semester ends.
+
+7
+
+Project Objectives and Metrics
+Goal of the Project
+The goal of the project was to design and implement a proof-of-concept NOAH Information
+Dashboard as a centralized, reusable data and analytics tool for Urban Labs. The dashboard
+should consolidate key New York City housing and affordability datasets, support geographic
+exploration of NOAH-related indicators, and provide a technical foundation that Urban Labs can
+extend in future phases.
+Project Deliverables and Metrics
+Project Objective 1 – Integrated data foundation
+Metric: Successfully retrieve, clean, and standardize data from multiple NYC open-data sources
+(e.g., PLUTO, ACS-derived indicators, and other NOAH-relevant datasets) into a consistent
+schema that can be reused in the dashboard and database.
+Project Objective 2 – Working database and data-access layer
+Metric: Design and populate a relational database that stores cleaned NOAH-related indicators
+by geography (ZIP/ZCTA and, where available, building) and supports basic query and filtering
+needs for analysis and visualization.
+Project Objective 3 – Streamlit dashboard with maps and charts
+Metric: Develop a functional Streamlit-based web dashboard prototype that provides at least one
+interactive map and several charts allowing users to explore NOAH-related indicators (e.g.,
+rents, income, housing units, and related metrics) by geography.
+Project Objective 4 – Automation, documentation, and final proof of concept
+Metric: Implement Python scripts to automate data retrieval and updates for selected sources, and
+deliver a complete POC package including the deployed Streamlit app, database schema, data
+pipeline scripts, and user/technical documentation sufficient for Urban Labs to understand and
+extend the system.
+Project Evaluation
+Project success was evaluated by comparing the original objectives and metrics to the final
+deliverables documented in the Sponsor’s Project Acceptance – RESULTS form, by assessing
+whether the dashboard and data pipeline were functional on realistic NOAH use cases, and by
+collecting sponsor feedback on usability and usefulness during demonstrations. The technology
+trial also provided empirical evidence on time savings and workflow improvements relative to
+the manual baseline.
+
+8
+
+Alternate Solutions Evaluated
+Before selecting the final solution stack, several alternative approaches were considered for both
+the data and visualization layers.
+Manual spreadsheet-based approach (status quo). One option was to continue relying on
+Excel/Google Sheets as the primary integration and analysis environment. While familiar and
+low-cost, this approach does not scale well to multiple large datasets, leads to inconsistent
+versions of data, and makes geographic analyses cumbersome. This option was therefore used
+only as the baseline for comparison.
+Business intelligence tools (Tableau/Power BI). A second option was to build the NOAH
+dashboard directly in tools like Tableau or Power BI, connecting to CSV files or simple
+databases. These tools provide rich visualization capabilities and interactive dashboards;
+however, they are less flexible for building automated data pipelines, integrating multiple APIs,
+and implementing custom geospatial logic. Licensing and deployment for external non-technical
+users also posed constraints.
+Cloud-native data warehouse and BI stack. A more scalable option would have been to use a
+cloud data warehouse (e.g., Snowflake or BigQuery) combined with a BI front end. While
+powerful, this approach would add cost and operational complexity beyond the scope of a
+semester-long POC and would require additional integration work for Urban Labs to maintain.
+Custom Python + PostgreSQL + Streamlit solution (selected). The chosen solution uses
+Python for ETL, PostgreSQL/PostGIS for data storage and geospatial support, and Streamlit for
+the dashboard front end. This stack offers high flexibility, strong support for open-data and
+geospatial workflows, and low licensing costs. It also fits well with academic and open-source
+practices, making it easier for Urban Labs to continue development after the course.
+Solution Evaluation Criteria
+The alternatives were evaluated using criteria including: (1) ability to integrate multiple opendata sources, (2) support for geographic and building-level analysis, (3) ease of automation and
+reproducibility, (4) cost and licensing constraints, (5) ease of deployment and sharing with the
+sponsor, and (6) alignment with the scope and timeframe of a semester project.
+Selection Rationale
+The custom Python + PostgreSQL + Streamlit solution was selected because it best balanced
+flexibility, geospatial capabilities, automation, and practicality. It allowed the student to
+implement end-to-end pipelines, control data models, and rapidly prototype an interactive
+
+9
+
+dashboard without heavy infrastructure overhead. Tableau/Power BI were retained as potential
+complementary tools for future visualization, but not as the core integration platform.
+
+10
+
+Literature Survey
+Introduction
+This literature review summarizes existing research and practice related to naturally occurring
+affordable housing (NOAH), housing affordability analytics, and the use of integrated data
+systems and dashboards for urban policy. It synthesizes work on the broader housing and costof-living context in New York City, the specific challenges of identifying and preserving NOAH
+units, and the role of data infrastructure and visualization in supporting decision-making by
+practitioners like Urban Labs.
+The Industry
+Urban data infrastructures have matured from static repositories into dynamic, participatory
+systems. Barns (2018) characterizes urban data platforms as “interfaces for smart governance,”
+mediating between technical innovation and civic accountability. Kitchin, Lauriault, and
+McArdle (2015) extend this notion, arguing that dashboards translate raw data into actionable
+knowledge by embedding performance indicators directly into governance cycles. Similarly,
+Pluto-Kossakowska (2022) finds that municipal dashboards can democratize sustainability
+initiatives by visualizing complex data in forms that residents understand, creating shared
+ownership of results.
+Within the housing sector, scholars highlight the economic and social significance of reliable
+affordability metrics. Waddell (2023) positions data-driven housing analysis as essential to
+regional planning, while Biljanovska (2023) documents the International Monetary Fund’s effort
+to standardize affordability indicators globally. Both show that data integration improves policy
+consistency across scales. Bibri and Krogstie (2020) further connect these analytics to
+sustainability, demonstrating that London and Barcelona use integrated dashboards to align
+housing, energy, and mobility data with climate objectives.
+Industry research therefore reveals two converging trajectories: technological consolidation
+through shared data standards, and institutional transformation toward evidence-based decision
+systems. For nonprofits like Urban Labs, these developments legitimize investment in
+lightweight, open dashboards that translate public data into strategic insights for community
+partners.
+The Problem
+Despite the growing availability of public datasets, scholars consistently describe fragmentation,
+inconsistency, and inaccessibility as enduring barriers. Silvestri (2024) observes that data
+generated by separate municipal departments remain locked in incompatible schemas and
+formats. Bentley et al. (2012) demonstrate that such gaps have real consequences: weak
+affordability metrics prevent early detection of social stress and mental-health effects caused by
+rent burden. Without integrated data pipelines, agencies lack longitudinal visibility across
+neighborhoods.
+
+11
+
+Kitchin (2016) warns that even when dashboards exist, poor data governance may produce
+illusory real-time awareness, a condition where decision makers believe they possess accurate
+information while relying on incomplete or unverified inputs. Barns (2018) echoes this concern,
+noting that the absence of standardized metadata undermines public trust. In the context of New
+York City, disparate data sources such as the American Community Survey (ACS), PLUTO
+land-use records, and local rent datasets are updated on different cycles and hosted on separate
+portals. Urban Labs currently must manually merge and validate these files, which is a process
+that can take weeks and is prone to error.
+At a conceptual level, the problem is twofold: (1) technical fragmentation in data structures and
+APIs, and (2) organizational fragmentation across research, policy, and community actors.
+Together they prevent timely, holistic assessment of affordability trends.
+The Proposed Solution
+Scholars propose integrative frameworks that combine open data standards with participatory
+design. Sauvé-Schenk et al. (2025) present the DASH System for affordable housing, illustrating
+how transparency and visualization encourage inter-agency collaboration. Their research
+confirms that open-source dashboards can perform as both technical and social infrastructures.
+Nidam (2025) adds that co-creation with end users enhances inclusivity and adoption—important
+for nonprofits that rely on diverse stakeholders rather than top-down mandates.
+Bibri and Krogstie (2020) and Wolf (2025) converge on the view that successful data systems
+balance analytical sophistication with institutional capacity. Over-engineered proprietary
+platforms often fail in civic contexts due to cost and maintenance demands. Streamlit and similar
+Python-based frameworks, by contrast, enable rapid prototyping, open access, and long-term
+sustainability, precisely the rationale behind the NOAH Dashboard.
+In practical terms, the literature supports an open-data ecosystem grounded in reproducibility,
+transparency, and collaborative governance. For Urban Labs, this translates into an architecture
+that automates data retrieval from the Census API and NYC Open Data, validates each record,
+and visualizes metrics such as median rent, median income, vacancy rate, and rent burden
+through an interactive web interface.
+The Technology
+Technological research outlines the foundations of data-driven urban platforms. Silvestri (2024)
+proposes a modular “urban intelligence architecture” that decouples data ingestion,
+transformation, and visualization. Lloret et al. (2025) expand this with an AI-ready, dashboardcentric framework combining sensors, APIs, and visualization layers for digital transformation in
+smart cities. These architectures emphasize interoperability through RESTful APIs,
+containerization, and metadata alignment—all feasible with the NOAH Dashboard’s Python and
+PostgreSQL stack.
+Yap and Biljecki (2023) contribute empirical evidence that standardized urban indicators enable
+cross-city benchmarking. Their Scientific Data dataset demonstrates that consistent schemas can
+scale from local to global analyses, a design philosophy mirrored in NOAH’s ZIP-code model.
+Kitchin (2016) and Barns (2018) emphasize that dashboards are not just technological tools but
+12
+
+socio-technical systems requiring clear data-governance protocols. Therefore, the NOAH project
+incorporates validation scripts, data dictionaries, and documentation following these
+recommendations.
+Furthermore, modern dashboards rely on cloud deployment for scalability. Wolf (2025)
+documents how sustainable platforms evolve from prototypes to production systems through
+containerized hosting and version control. Streamlit Cloud fulfills similar roles at smaller scale:
+automated dependency management, continuous deployment from GitHub, and browser-based
+sharing. Together these technologies address both the integration and dissemination needs
+identified earlier.
+Importantly, the reviewed literature also reveals the ethical dimension of data architecture.
+Kitchin (2016) and Bibri & Krogstie (2020) warn that algorithmic bias and unequal access can
+undermine data-driven governance. Hence, open-source transparency and clear methodological
+notes are as vital as technical performance, which are principles the NOAH Dashboard explicitly
+embeds through its documentation and open repository.
+Use Cases
+Case studies from multiple regions demonstrate tangible benefits of civic dashboards. Wolf
+(2025) examines the UK Urban Observatories and the Smart Columbus Operating System,
+concluding that long-term success depends on organizational learning, not merely technical
+deployment. Bibri and Krogstie (2020) describe how Barcelona’s and London’s dashboards
+improved resource allocation for sustainability projects, reducing duplication among agencies.
+Sauvé-Schenk’s DASH initiative offers the most direct housing parallel. Within one year of
+implementation, partner agencies reported faster social-housing placement decisions and
+improved public transparency. The authors attribute this to combining spatial data with
+interactive visualization—an approach identical to NOAH’s ZIP-level rent-burden maps.
+Other scholars explore user adoption. Nidam (2025) finds that participatory co-design workshops
+increase user confidence and long-term engagement. Pluto-Kossakowska (2022) similarly reports
+that community feedback loops maintain dashboard relevance over time. These findings justify
+NOAH’s iterative design cycle and feedback survey integrated into the technology-trial phase.
+The reviewed examples also expose pitfalls: some dashboards stagnate when funding lapses or
+when data updates require specialized staff. Wolf (2025) emphasizes establishing internal
+training and governance committees, a lesson already applied in Urban Labs’ plan to produce
+detailed documentation and tutorial videos.
+Collectively, these cases demonstrate that dashboards achieve impact when technical reliability
+aligns with organizational capacity and user literacy. For Urban Labs, adopting these principles
+ensures that the NOAH Dashboard remains both scientifically credible and socially embedded.
+Conclusion
+The reviewed scholarship provides both theoretical justification and practical guidance
+for the NOAH Information Dashboard.
+
+13
+
+Industry research confirms a growing reliance on dashboards as instruments of
+transparency and performance measurement. Problem-focused studies reveal persistent
+fragmentation in housing data that impedes evidence-based policymaking. Technical literature
+outlines architectures, modular, API-driven, open source, that directly inform NOAH’s system
+design. Case studies validate the social value of these systems when accompanied by
+participatory design and institutional support.
+In synthesizing these strands, this review demonstrates that the NOAH Dashboard
+extends existing smart-city research into the nonprofit domain. It serves as a model for how
+lightweight, transparent technologies can democratize access to urban knowledge. Future
+research should evaluate longitudinal adoption metrics—frequency of use, decision impact, and
+maintenance cost, to further integrate data science with urban-policy innovation.
+
+14
+
+Approach and Methodology
+Problem Statement and Research Question
+The project addresses the problem of fragmented NOAH-relevant data and manual,
+unsustainable workflows at Urban Labs. The central research question is whether an integrated,
+automated pipeline and web dashboard can materially improve their ability to monitor NOAH
+compared to the existing spreadsheet-based processes.
+Proof of Concept Approach
+The proof of concept was structured around the functional requirements specification (FRS) and
+agreed objectives. Key components included:
+•
+
+Identifying and prioritizing NOAH-relevant datasets at the ZCTA and building levels.
+
+•
+
+Designing a relational schema suitable for linking these datasets by geography.
+
+•
+
+Building Python-based ETL scripts to ingest, clean, and transform data into the database.
+
+•
+
+Implementing a Streamlit web application to expose the data via maps, charts, and filters.
+
+•
+
+Running a technology trial to compare the new workflow with the baseline and capture
+sponsor feedback.
+
+Technology Trial Plan
+The Technology Trial Plan defined hypotheses (e.g., reducing data preparation time, improving
+usability and satisfaction), metrics, and a structured three-phase trial: setup, execution, and
+observation. A small set of realistic analysis tasks was used to compare the manual baseline
+against the dashboard-based workflow, focusing on time to insight, number of manual steps, and
+perceived ease of use.
+Population/Data
+The project used publicly available datasets from NYC Open Data, PLUTO, and other NOAHrelated sources, complemented by demographic and socioeconomic indicators derived from the
+American Community Survey (ACS). The primary “population” was ZIP codes/ZCTAs within
+New York City, with building-level records added where PLUTO and related datasets allowed.
+The independent variables include housing characteristics and neighborhood indicators; the
+dependent outcomes are NOAH-relevant measures such as affordability categories and risk
+signals.
+Procedures
+1. Requirements and design. Refine requirements with the sponsor, document them in the FRS,
+and design the database schema and data model.
+
+15
+
+2. Data acquisition and cleaning. Implement Python scripts to download, clean, and geocode
+datasets as needed; resolve key and schema inconsistencies.
+3. Database implementation. Create tables, load cleaned data into PostgreSQL/PostGIS, and
+validate referential integrity.
+4. Dashboard development. Build a Streamlit app with map and chart views, filtering controls,
+and informative labels and tooltips.
+5. Technology trial. Define baseline tasks, time the manual vs. dashboard-based workflows, and
+collect sponsor observations.
+6. Documentation and reporting. Prepare user instructions, technical notes, and this final report.
+Measurements and Data Collection
+During the technology trial, metrics such as time spent preparing data, number of manual
+transformations, and qualitative ease-of-use ratings were collected. Additional “implicit” metrics
+include the number of NOAH-relevant indicators readily accessible in the dashboard and the
+geographic coverage achieved. Data were collected by timing task completion, observing the
+sponsor’s interactions, and reviewing log outputs from the ETL scripts.
+Data Analysis
+Quantitative trial results were summarized with descriptive statistics (e.g., average time savings,
+number of steps eliminated), while qualitative observations were analyzed for recurring themes
+such as clarity of visuals and navigation. These findings were then compared to the original
+objectives to assess whether the POC met expectations.
+Organizational Change Plan (Summary)
+From an organizational perspective, the main barriers to adoption include staff familiarity with
+the manual workflow, concerns about data correctness in an automated system, and limited
+technical resources. The organizational change management plan proposes stakeholder mapping,
+communication and training sessions, and a phased rollout in which the dashboard initially
+complements, rather than replaces, existing processes. Over time, as confidence grows, more
+analyses can migrate to the new pipeline.
+
+16
+
+Results
+Data Processing
+The project successfully ingested and cleaned multiple NOAH-relevant datasets into a unified
+database. Key processing steps included harmonizing geographic identifiers (e.g., ZIP vs.
+ZCTA), standardizing field names and data types, and handling missing or inconsistent values.
+The final schema supports joining housing, demographic, and building attributes at the
+ZIP/ZCTA and selected building levels.
+Findings
+The NOAH Information Dashboard enables Urban Labs to visualize spatial patterns in housing
+affordability. For example, the map view highlights clusters of ZIP codes with high rent burdens
+relative to income, while other charts reveal relationships between housing stock characteristics
+and affordability indicators. The building-level integration for selected areas demonstrates how
+PLUTO data can be used to zoom from neighborhoods down to individual parcels.
+
+Figure 10-1. Advanced analysis view for ZIP code 10012, showing building statistics and
+affordability rankings
+
+17
+
+Summary Statistics
+Across the datasets loaded into the prototype, the database includes 177 NYC ZIP/ZCTAs and
+about 100,000 residential buildings with associated NOAH-relevant attributes. Summary
+statistics for key indicators—such as median rent, median income, and vacancy-related fields,
+provide a baseline for comparing neighborhoods.
+
+Figure 10-2. Analytics view for ZIP code 10012, including distribution and comparison with
+citywide metrics.
+Quantitative Results (Technology Trial)
+In the technology trial, the automated pipeline and dashboard reduced the time required to
+assemble NOAH-relevant datasets for a sample analysis task by about 50% compared to the
+manual workflow. The number of manual steps decreased, and the sponsor reported that the map
+and chart views made it easier to spot emerging patterns, such as areas with rising rents and
+stagnant incomes.
+18
+
+Qualitative Observations
+Qualitative feedback from the sponsor emphasized three strengths of the POC:
+(1) Having a “single place” to explore NOAH data;
+(2) The ability to filter and compare neighborhoods interactively;
+(3) Improved confidence that data transformations were documented and repeatable. Suggestions
+for improvement included expanding the set of indicators and refining some visualization
+choices for clarity.
+Outcomes and Implications
+The results indicate that even a relatively lightweight, open-source stack can deliver meaningful
+improvements in how Urban Labs accesses and analyzes NOAH data. The POC demonstrates the
+feasibility of a centralized NOAH information system and suggests that further investment in
+automation and modeling could yield significant efficiency and insight gains.
+
+Figure 10-3. NOAH NYC Housing Data Explorer – Citywide map view and summary metrics.
+Repository of Data Sets and Code
+The data sets and code for this project are stored in a GitHub repository:
+https://github.com/cz3275/urbanlab-noah-dashboard
+
+19
+
+The repository includes scripts, database schema definitions, the Streamlit application, and
+configuration files needed to reproduce the prototype.
+Streamlit Cloud Link:
+https://urbanlab-noah-dashboard.streamlit.app/
+
+20
+
+Issues Encountered
+Several issues were encountered during the project, many of which were anticipated in the risk
+management plan.
+Data quality and consistency. Some open datasets contained missing, outdated, or inconsistent
+values, especially for building-level attributes. This was mitigated through cleaning rules,
+conservative filtering, and clear documentation of limitations.
+Geographic alignment. Aligning different geographic units (ZIP, ZCTA, census tract, and
+PLUTO parcels) created complexity in the data model. The use of ZCTAs as a common
+denominator, supplemented by PostGIS spatial joins, helped manage this issue, but perfect
+alignment was not always possible.
+Performance and hosting constraints. Running a geospatial dashboard on limited resources
+required careful optimization of queries and caching of pre-aggregated tables. Streamlit Cloud
+imposed constraints on memory and CPU, which influenced the size and complexity of the initial
+deployment.
+Time and scope management. As the project progressed, opportunities arose to extend the
+scope (e.g., deeper building-level analysis). The status reports and sponsor discussions were used
+to prioritize core objectives and defer some enhancements to future work, keeping the project
+manageable within the semester.
+Most of these issues were either explicitly captured in the risk management plan or closely
+related to identified risks. Mitigation strategies—such as incremental development, frequent
+testing, and early sponsor feedback—helped ensure that none of the issues prevented delivery of
+a functioning proof of concept.
+
+21
+
+Lessons Learned
+From a technical perspective, the project provided hands-on experience with designing an endto-end data product: integrating multiple open datasets, modeling data for geospatial analysis,
+implementing ETL pipelines in Python, and deploying a working web dashboard for a real
+sponsor. It reinforced the importance of investing time up front in data modeling and cleaning to
+avoid downstream problems in the visualization and analysis layers.
+From a project management perspective, the work highlighted the value of clear objectives,
+regular status reporting, and realistic scoping when working with an external sponsor. Status
+reports, risk planning, and the technology trial plan proved especially useful in aligning
+expectations and managing changes. The experience also underscored how important it is to
+communicate technical trade-offs in non-technical language so that sponsors can make informed
+decisions.
+Overall, the applied project demonstrated how a relatively small technical team can deliver a
+meaningful proof of concept that addresses a real-world policy problem, provided that
+requirements are well understood, risks are managed proactively, and the solution leverages
+appropriate open-source tools.
+
+22
+
+Conclusion and Further Work
+Conclusions
+This project set out to determine whether an integrated data pipeline and dashboard could
+improve Urban Labs’ ability to monitor naturally occurring affordable housing in New York
+City. The proof-of-concept NOAH Information Dashboard successfully met its core objectives:
+integrating multiple NOAH-relevant datasets, designing a relational and spatially aware
+database, building an interactive Streamlit dashboard, and providing automation scripts and
+documentation.
+The POC demonstrates that Urban Labs can move beyond manual, spreadsheet-based workflows
+toward a more systematic, reproducible, and scalable approach to NOAH analytics. It provides a
+concrete artifact that can be used to support internal discussions, stakeholder engagement, and
+future funding proposals.
+Implications
+For practice, the project shows how open data and open-source tools can be combined to support
+affordable housing research within resource-constrained organizations. For the broader field, it
+illustrates a replicable pattern—integrated data foundation + geospatial dashboard—that other
+cities and organizations could adapt to their own NOAH or housing affordability challenges.
+Limitations
+The prototype is limited in scope and robustness. It covers a subset of potential NOAH-relevant
+datasets and focuses primarily on descriptive analytics rather than predictive modeling.
+Performance and security have been addressed at a basic level suitable for a POC, but further
+hardening would be needed for production use. Data quality issues and geographic alignment
+constraints also limit the precision of some indicators.
+Further Work
+Future work could include:
+•
+
+Expanding the set of indicators (e.g., eviction filings, tax lien data, or code violations).
+
+•
+
+Incorporating time-series views to track changes in NOAH indicators over multiple years.
+
+•
+
+Adding risk-scoring models to identify buildings or neighborhoods at high risk of NOAH
+loss.
+
+•
+
+Improving the user interface and adding role-specific views for different stakeholders.
+
+•
+
+Migrating the prototype to a more scalable production environment if adopted by Urban
+Labs.
+
+Closing Summary
+23
+
+In summary, the NOAH Information Dashboard proof of concept demonstrates that it is both
+feasible and valuable to create a centralized NOAH information system for Urban Labs using
+open data and open-source tools. While further work is needed to scale and refine the solution,
+the project has delivered a concrete foundation that advances the sponsor’s mission and
+contributes a practical example of applied data engineering and analytics in the affordable
+housing domain.
+
+24
+
+References
+Barns, S. (2018). Smart cities and urban data platforms: Designing interfaces for smart
+governance. City, Culture and Society, 12, 5–12. https://doi.org/10.1016/j.ccs.2017.09.006
+Bentley, R., Baker, E., Mason, K., Subramanian, S. V., & Kearns, A. (2012). Cumulative
+exposure to poor housing affordability and its association with mental health in men and women.
+Journal of Epidemiology and Community Health, 66(9), 761–766. https://doi.org/10.1136/jech2011-200291
+Bibri, S. E., & Krogstie, J. (2020). The emerging data-driven smart city and its innovative
+applied solutions for sustainability: The cases of London and Barcelona. Energy Informatics, 3,
+5. https://doi.org/10.1186/s42162-020-00108-6
+Biljanovska, N. (2023). Housing affordability: A new dataset. IMF Working Paper 2023/247.
+https://doi.org/10.5089/9798400259746.001
+Kitchin, R. (2016). The real-time city? Big data and smart urbanism. GeoJournal, 79(1), 1–14.
+https://doi.org/10.1007/s10708-013-9516-8
+Kitchin, R., Lauriault, T. P., & McArdle, G. (2015). Knowing and governing cities through urban
+indicators, city benchmarking and real-time dashboards. Regional Studies, Regional Science,
+2(1), 6–28. https://doi.org/10.1080/21681376.2014.983149
+Lloret, Á., Peral, J., Ferrández, A., Auladell, M., & Muñoz, R. (2025). A data-driven framework
+for digital transformation in smart cities: Integrating AI, dashboards, and IoT readiness. Sensors,
+25(16), 5179. https://doi.org/10.3390/s25165179
+Lock, O. (2020). A review and reframing of participatory urban dashboards. City, Culture and
+Society, 20, 100294. https://doi.org/10.1016/j.ccs.2019.100294
+Nidam, Y. (2025). Practicing data inclusion: Co-creation of an urban data dashboard.
+Environment and Planning B: Urban Analytics and City Science, 52(1), 7–25.
+https://doi.org/10.1177/23998083241245759
+Pluto-Kossakowska, J. (2022). Dashboard as a platform for community engagement in a city
+development — A review of techniques, tools and methods. Sustainability, 14(17), 10809.
+https://doi.org/10.3390/su141710809
+Sauvé-Schenk, K., Amyot, D., Burkholder-Harris, K., & Gaudreau, M. (2025). Decisions for
+affordable/social housing (DASH) system: Envisioning open and transparent data-informed
+decision making. International Journal on Homelessness, 5(3), 368–378.
+https://doi.org/10.5206/ijoh.v5i3.22863
+
+25
+
+Silvestri, S. (2024). An urban intelligence architecture for heterogeneous data and application
+integration, deployment and orchestration. Sensors, 24(7), 2376.
+https://doi.org/10.3390/s24072376
+Waddell, P. (2023). Data-driven multi-scale planning for housing affordability. Joint Center for
+Housing Studies of Harvard University. https://www.jchs.harvard.edu/research-areas/workingpapers/data-driven-multi-scale-planning-housing-affordability
+Wolf, K. (2025). Building enduring smart city data platforms to provide urban management
+support: Lessons learnt from UK urban observatories and the US Smart Columbus Operating
+System. Frontiers in Sustainable Cities, 7, 1512847. https://doi.org/10.3389/frsc.2025.1512847
+Yap, W., & Biljecki, F. (2023). A global feature-rich network dataset of cities and dashboard for
+comprehensive urban analyses. Scientific Data, 10(1), 667. https://doi.org/10.1038/s41597-02302578-1
+
+26
+
+Appendix A - Project Acceptance Document
+
+27
+
+28
+
+Appendix B - Project Sponsor Agreement
+
+29
+
+30
+
+31
+
+32
+
+Appendix C – Functional Requirements Specifications
+
+MASTER OF SCIENCE IN MANAGEMENT AND SYSTEMS
+Applied Project Capstone
+MASY GC- 4100
+
+MEMORANDUM
+
+TO:
+
+Dr. Andres Fortino
+
+FROM: Chaoou Zhang
+DATE:
+
+Oct 5th, 2025
+
+RE:
+
+Project Requirements Specification
+– NOAH Information Dashboard: A Centralized Data Repository for Urban Labs
+
+Project Goal
+The NOAH Information Dashboard aims to provide a centralized and interactive platform that integrates
+multi-source urban datasets related to housing, income, and affordability within New York City. The goal
+is to simplify data access for Urban Labs researchers, city planners, and policymakers by consolidating
+publicly available datasets, such as the U.S. Census ACS, NYC Open Data, and HUD User Data, into a
+single, user-friendly web dashboard. This proof-of-concept (POC) project will demonstrate the technical
+feasibility of automating data collection, cleaning, and visualization to support data-driven insights and
+equitable housing research.
+
+Project Objectives
+Objective 1 – Data Integration and Cleaning
+•
+
+Measurement: Successfully retrieve and standardize datasets from multiple open-data APIs
+(Census, NYC Open Data, HUD).
+
+33
+
+•
+
+Timeline: Weeks 1–3 of the POC phase.
+
+Objective 2 – Database and Data Model Design
+•
+
+Measurement: Design and populate a relational database (PostgreSQL or SQLite) that stores
+cleaned housing and socioeconomic indicators by ZCTA.
+
+•
+
+Timeline: Weeks 3–5.
+
+Objective 3 – Dashboard Development
+•
+
+Measurement: Develop a functional Streamlit dashboard prototype that displays ZIP/ZCTA-level
+visualizations for rent, income, rent burden, and vacancy rates.
+
+•
+
+Timeline: Weeks 5–8.
+
+Objective 4 – Automation and API Integration
+•
+
+Measurement: Implement automated Python scripts (e.g., fetch_zcta_data.py, update_data.py) for
+data synchronization and API refresh.
+
+•
+
+Timeline: Weeks 8–10.
+
+Objective 5 – Final Proof of Concept Delivery
+•
+
+Measurement: Present a working prototype demonstrating integrated datasets, live visualizations,
+and an automated update workflow to the project sponsor.
+
+•
+
+Timeline: Final week of the POC phase.
+
+Requirements Specifications
+1.
+
+Data Acquisition and Integration
+
+•
+
+Retrieve datasets from APIs: U.S. Census ACS 5-Year Estimates, NYC Open Data (PLUTO,
+Median Rent, Vacancy, Building Footprints), and HUD User Data.
+
+•
+
+Merge and standardize all datasets at the ZIP/ZCTA level.
+
+•
+
+Handle missing values and ensure consistent geocoding.
+
+2. Data Storage and Management
+•
+
+Store integrated datasets in a structured database (PostgreSQL or SQLite).
+
+•
+
+Implement schema with tables for housing, rent, income, and demographic indicators.
+
+•
+
+Enable export functionality to CSV and JSON.
+
+3. Data Automation
+•
+
+Schedule Python scripts (fetch_zcta_data.py, update_data.py) to refresh datasets automatically.
+
+•
+
+Include API keys and timestamp logging.
+
+4.
+
+User Interface / Dashboard Visualization
+
+•
+
+Build a Streamlit web dashboard that visualizes:
+
+34
+
+o
+
+Median rent by ZIP/ZCTA
+
+o
+
+Median household income
+
+o
+
+Rent burden and vacancy rate
+
+o
+
+Building age distribution and housing stock
+
+•
+
+Integrate interactive filters (e.g., ZIP selector, year range, housing type).
+
+•
+
+Display maps (choropleth and point layers) using PyDeck or Plotly.
+
+5. APIs and Backend Processing
+•
+
+Use Census and NYC Open Data REST APIs for live data access.
+
+•
+
+Support manual upload for custom CSV files.
+
+•
+
+Expose basic internal API endpoints for data query and download.
+
+6. Performance and Security
+•
+
+Optimize API calls and data joins to load under 10 seconds for a ZIP view.
+
+•
+
+Secure API keys and environment variables using .env files.
+
+•
+
+Store only aggregated public data to avoid privacy issues.
+
+7.
+
+System Architecture and Platform
+
+•
+
+Frontend: Streamlit (Python)
+
+•
+
+Backend: Python (Pandas, Requests, GeoPandas)
+
+•
+
+Database: PostgreSQL / SQLite
+
+•
+
+Hosting (PoC): Local server or Streamlit Cloud
+
+•
+
+Version Control: GitHub repository with collaboration enabled
+
+8. Documentation and Reproducibility
+•
+
+Include README.md and data dictionary for each dataset.
+
+•
+
+Maintain metadata files for data sources and update frequency.
+
+Use Case
+
+Persona: Alex, an analyst at Urban Labs, tasked with researching housing affordability across New York
+City.
+
+Scenario:
+
+35
+
+Alex accesses the NOAH Information Dashboard to compare rental affordability between ZIP codes in
+Brooklyn and the Bronx. Upon loading the dashboard, he uses the interactive map to filter by ZIP and views
+a choropleth map showing median rent and income levels. He notices that ZIP 11212 has a high rent burden
+and low median income. Alex downloads the data for further analysis in Excel and includes it in his Urban
+Labs briefing report on housing inequality.
+
+Later, the automated update script (update_data.py) runs overnight, refreshing all datasets from the Census
+API and NYC Open Data. The next day, Alex logs in again to find new 2024 ACS data automatically
+reflected in the dashboard—without manual intervention. He presents the latest figures to the policy team,
+confident that the data is accurate, up-to-date, and centrally managed through the NOAH Dashboard POC.
+Documentation of LLM Prompts (if used)
+
+Please give me a use case for my app, includes a persona and a scenario.
+
+36
+
+Appendix D - Project Plan
+
+MASTER OF SCIENCE IN MANAGEMENT AND SYSTEMS
+Applied Project Capstone
+MASY GC- 4100
+
+MEMORANDUM
+
+TO:
+
+Dr. Andres Fortino
+
+FROM:
+
+Chaoou Zhang
+
+DATE:
+
+Oct 20th, 2025
+
+RE:
+
+Assignment 2 – Work Breakdown Structure and Schedule
+
+Project Tasks Outline
+Level 1 – Initiation & Planning:
+1.1 Define project scope and objectives
+1.2 Review client requirements and finalize PoC scope
+1.3 Identify data sources (Census API, PLUTO, Rent API)
+1.4 Confirm technical environment (Python, Streamlit, GitHub)
+1.5 Develop project schedule and milestones
+Deliverables: Approved project scope, schedule, resource plan and final proposal.
+Due: Week 2 (Sep 22nd,2025)
+
+Level 2 – Data Acquisition & Preparation
+2.1 Develop data-fetch scripts (fetch_zcta_data.py, update_data.py)
+
+37
+
+2.2 Automate data retrieval from Census API, PLUTO, and Rent datasets
+2.3 Clean and standardize datasets (ZCTA merge, missing value handling)
+2.4 Validate and store data in centralized repository (data/ folder)
+2.5 Document data pipeline and update README
+Deliverables: Verified, cleaned datasets and automated data sync workflow
+Due: Week 4 (Oct 6th,2025)
+
+Level 3 – Technology Trial
+4.1 Define trial objectives and hypothesis
+4.2 Design A/B testing structure (control vs. prototype users)
+4.3 Establish baseline metrics (data accuracy, processing time, user satisfaction)
+4.4 Conduct Functionality, Validity, Usability, and Benefit tests
+4.5 Collect trial data and user feedback survey
+4.6 Analyze results and compare against baseline
+4.7 Draft Technology Trial Report (summary, findings, recommendations)
+Deliverables: Technology Trial Report, WBS
+Due: Week 6 (Oct 20th, 2025)
+
+Level 4 – Dashboard Development
+3.1 Design Streamlit dashboard layout and navigation
+3.2 Implement core features:
+3.2.1 Interactive ZIP filter and map visualization
+3.2.2 Dynamic charts (median rent, income comparison)
+3.2.3 API refresh button and real-time updates
+3.3 Integrate GeoJSON layers for NYC borough boundaries
+3.4 Test functionality and resolve UI bugs
+3.5 Deploy prototype for user testing
+Deliverables: Functional prototype dashboard
+Due: Week 9 (Nov 10th,2025)
+
+Level 5 – Documentation & Reporting
+
+38
+
+5.1 Update Functional Requirement Specification (FRS) to reflect trial changes
+5.2 Prepare Work Breakdown Structure chart and timeline
+5.3 Submit Project Progress Reports
+5.4 Finalize presentation slides for Urban Labs and faculty panel
+5.5 Submit final Capstone report and code repository on Github
+Deliverables: Final report, and Presentation
+Due: Week 13 (Dec 8th,2025)
+
+Prompt: “Using the Functional Requirement Specification (FRS) and project proposal for my Capstone
+project NOAH Information Dashboard, create a Work Breakdown Structure (WBS) with three levels of
+detail.
+The project runs from September 8th to December 8th 2025 and includes tasks such as data acquisition
+from Census API, PLUTO, and rent datasets, Streamlit dashboard development, technology trial testing
+(functionality, validity, usability, benefits), and final reporting.”
+
+39
+
+Appendix E - Risk Management Plan
+
+MASTER OF SCIENCE IN MANAGEMENT AND ANALYTICS
+Applied Project Capstone
+MSMA GC- 4115
+MEMORANDUM
+TO:
+
+Dr. Andres Fortino
+
+FROM:
+
+Chaoou Zhang
+
+DATE:
+
+Nov 2nd, 2025
+
+RE:
+
+Risk Management Plan
+
+Project
+The NOAH Information Dashboard integrates housing, income, rent, and vacancy data from
+multiple NYC open-data APIs into a single Streamlit web dashboard for Urban Labs.
+The project’s goal is to automate data collection, improve data accuracy, and visualize housing
+affordability metrics for policy analysis.
+Risks
+Probability Impact
+Score
+Score
+(1,2 or 3)
+(1,2 or 3)
+
+Number Risk
+1
+
+API service downtime or rate-limit failure 2
+when fetching Census or NYC data
+
+40
+
+3
+
+2
+
+Inaccurate or missing data from public datasets 3
+(ACS/PLUTO)
+leading
+to
+incorrect
+visualizations
+
+2
+
+3
+
+Streamlit Cloud deployment or dependency 2
+conflict prevents public demo
+
+3
+
+4
+
+Performance issues due to large data size 2
+causing dashboard lag
+
+2
+
+5
+
+Delay in Technology Trial feedback collection 2
+due to limited user participation
+
+2
+
+6
+
+Time overrun from unplanned debugging or 3
+integration errors
+
+2
+
+7
+
+GitHub or environment misconfiguration 1
+leading to data loss or non-reproducibility
+
+3
+
+8
+
+Security or privacy concern if public datasets 1
+contain sensitive information
+
+2
+
+9
+
+Limited technical skills within Urban Labs 2
+team for long-term maintenance
+
+3
+
+2
+
+2
+
+10
+
+Sponsor or stakeholder schedule conflicts
+causing delayed approvals
+
+Risk Matrix
+Place each risk in the risk matrix below. Enter just the number into the appropriate box.
+
+Probability
+occurrence)
+
+(of
+
+RISK (exposure)
+1.Slight
+
+2. Moderate 3. High
+
+1. Very
+Unlikely
+
+8
+
+7
+
+2.
+Possible
+
+4,5,10
+
+1,3,9
+
+41
+
+3.
+Expected
+
+2,6
+
+Contingency Plan
+Risk
+
+Description
+
+Probability Exposure Contingency Plan
+(1-3)
+(1-3)
+
+1
+
+API service downtime
+or rate-limit failure
+
+2
+
+3
+
+Implement local data caching; use
+backup data sources (previous ACS
+downloads). Add retry logic and error
+handling for failed API calls.
+
+2
+
+Inaccurate or missing
+data
+from
+public
+datasets
+
+3
+
+2
+
+Validate dataset consistency with
+cross-checks;
+document
+data
+limitations in dashboard; display “Data
+Source Verified” indicator.
+
+3
+
+Streamlit
+Cloud
+deployment
+or
+dependency conflict
+
+2
+
+3
+
+Maintain separate environment.yml
+and test deploy on both local and
+Streamlit Cloud; if failure persists,
+deploy via Heroku or GitHub Pages
+backup.
+
+4
+
+Time overrun from
+unplanned debugging
+
+3
+
+2
+
+Allocate 10 % buffer time in schedule;
+maintain daily commits and progress
+logs to detect blockers early; prioritize
+critical fixes only.
+
+5
+
+Limited
+technical
+skills within Urban
+Labs team
+
+2
+
+3
+
+Conduct training workshop and
+provide detailed user manual; record
+short Loom video tutorials for
+dashboard
+updates
+and
+troubleshooting.
+
+42
+
+Appendix F – Organizational Change Management Plan
+
+MASTER OF SCIENCE IN MANAGEMENT AND ANALYTICS
+Applied Project Capstone
+MASY GC- 4115
+MEMORANDUM
+TO:
+FROM:
+DATE:
+
+Dr. Andres Fortino
+Chaoou Zhang
+th
+Oct 26 2025
+
+RE:
+
+The Organizational Change Plan
+
+The Organizational Change Plan
+1. Objective Clarification
+Vision: The NOAH Information Dashboard aims to transform Urban Labs’ fragmented datacollection workflow into a unified, automated platform that integrates housing, income, and
+affordability datasets from public APIs. This technological change aligns with the organization’s
+strategic goal of becoming a data-driven research leader capable of producing timely, evidencebased insights for New York City housing policy.
+Key Outcomes: Success will be demonstrated through a ≥ 60 % reduction in manual dataprocessing time, a ≥ 40 % improvement in user satisfaction with data accessibility, and full
+operational deployment of the dashboard by December 2025, enabling researchers to access
+standardized, up-to-date data within seconds.
+2. Stakeholder Engagement
+Identify Stakeholders: Primary stakeholders include Urban Labs’ data analysts, research
+coordinators, project managers, and leadership team, as well as NYU Capstone faculty sponsors.
+Secondary stakeholders are city policy partners and technical collaborators involved in data
+sourcing.
+Communication Plan: Project updates and change notices will be delivered via bi-weekly team
+meetings, Slack announcements, and email briefings. A dedicated Confluence page will track
+43
+
+milestones, while quarterly sponsor reviews will align all parties on adoption progress and
+feedback.
+3. Cultural Assessment and Planning Section
+Current Culture Analysis: Urban Labs maintains a collaborative but data-siloed culture—
+teams are research-focused, yet each manages its own datasets with limited cross-sharing.
+Strengths include analytical rigor and mission alignment; weaknesses include inconsistent digital
+workflows and limited automation familiarity.
+Desired Culture Definition: The NOAH initiative seeks to foster a culture of innovation,
+openness, and data collaboration—encouraging staff to rely on centralized, transparent digital
+systems and continuous improvement through shared dashboards and reproducible analytics.
+4. Change Management Section
+Change Model Adoption: Kotter’s 8-Step Model will guide the transition: building urgency
+around data inefficiency, forming a cross-functional coalition, communicating the vision,
+removing technical barriers, generating short-term wins via pilot tests, and embedding data
+automation into daily routines.
+Resistance Management: Potential resistance may arise from staff apprehension about technical
+complexity or loss of data control. Early hands-on demos, peer mentoring, and open Q&A
+sessions will address concerns proactively and reinforce the personal and institutional benefits of
+adoption.
+Skills and Capability Enhancement Section
+Skills Inventory: Current skills include strong policy analysis and data interpretation but limited
+experience with Python, APIs, and spatial databases. Identified gaps involve coding literacy,
+dashboard operation, and API troubleshooting.
+Training and Development: A two-phase training plan will upskill existing researchers through
+short Python for Data Automation workshops and Streamlit dashboard tutorials. If required, a
+part-time data engineer will be onboarded to ensure sustainability and mentor internal staff.
+5. Documentation and Communication Section
+
+44
+
+Process Documentation: All project phases—from planning to technology trial—will be
+recorded in GitHub Wiki and Confluence, capturing decisions, scripts, data models, and
+encountered challenges. Version control commits will ensure reproducibility and transparency.
+Feedback Mechanisms: User feedback will be collected through bi-weekly surveys and
+monthly retrospectives. Findings will feed into sprint reviews, allowing real-time adjustments to
+dashboard usability and automation features.
+6. Integration and Adaptation Section
+Scalability Plan: Upon successful trial completion, the NOAH Dashboard will migrate from
+local hosting to Streamlit Cloud or AWS EC2 for multi-user access. Standard operating
+procedures will embed dashboard use into Urban Labs’ research workflow templates.
+Continuous Improvement: A standing “Data Innovation Committee” will monitor metrics
+quarterly, implement incremental enhancements, and evaluate new datasets or AI modules for
+future integration—ensuring ongoing alignment with Urban Labs’ research goals.
+
+PROMPTS
+Prompt used: “Using my project documents (Proposal, FRS, WBS, and Technology Trial Plan)
+for the NOAH Information Dashboard – Urban Labs project, generate an Organizational Change
+Management Plan following the template. Address all seven sections.
+Tool utilized: ChatGPT (GPT-5) for plan generation, then refined manually for accuracy, style,
+and organizational context.
+
+45
+
+Appendix G – Technology Trial Plan
+
+MASTER OF SCIENCE IN MANAGEMENT AND SYSTEMS
+Applied Project Capstone MASY GC- 4100
+MEMORANDUM
+TO: Dr. Andres Fortino
+FROM:
+Chaoou Zhang
+DATE: October 10th 2025
+RE: Technology Trial Plan NOAH Project
+Business Task and Objectives
+The NOAH Information Dashboard project seeks to improve how Urban Labs collects,
+consolidates, and visualizes public housing and socioeconomic data from multiple open data
+APIs. Currently, researchers must manually download and merge CSV files from sources such as
+the
+U.S. Census Bureau (ACS), NYC Open Data, and HUD User datasets, which is a process that is
+time consuming and inconsistent.
+Objective: Test a proof-of-concept (POC) automated data pipeline and interactive web
+dashboard that can:
+• Pull and clean housing and income data from multiple sources in real time,
+• Store them in a single standardized repository (PostgreSQL + PostGIS), and
+• Visualize ZIP- and building-level metrics within a Streamlit front-end.
+Success will be defined by measurable improvements in data-processing time, system reliability,
+and visualization usability compared with the current manual workflow.
+
+The Hypothesis
+Population: Urban Labs researchers and policy analysts who regularly use NYC housing
+datasets. Intervention: Implementation of an automated Python-based pipeline and Streamlit
+dashboard that consolidate data by ZIP and building.
+Expected Outcome: Reduce data-preparation time by at least 60% and improve dataset
+consistency and user satisfaction with data access by 40%.
+
+46
+
+Control: The current manual process of downloading, merging, and analyzing separate CSV
+files using Excel or individual Python scripts.
+
+47
+
+Hypothesis Statement: “By introducing the NOAH Dashboard, we hypothesize that Urban Labs
+researchers will reduce data collection and processing time by 60% and increase satisfaction with data
+access by 40% compared to the current manual process, while maintaining equal or higher data
+accuracy.”
+
+Baseline Metrics and Control Group
+Baseline Metrics:
+• Average time to collect and merge three datasets manually.
+• Number of data errors or missing records per run (current ≈ 5%).
+• User satisfaction with data access.
+Control Group Setup:
+• Maintain the manual workflow for two analysts during the trial.
+• Compare their performance with two analysts using the NOAH Dashboard (intervention
+group).
+
+The Trial
+• Duration: Three weeks (November 1 – November 21, 2025).
+• Metrics: Data processing time, data accuracy, and user satisfaction survey results.
+• Comparison Plan: Measure percentage improvement for each metric between the manual
+(control) and automated (intervention) methods.
+Trial Phases:
+Setup: Deploy PostgreSQL database and Streamlit dashboard on local server. Execution: Run data
+update scripts (fetch_zcta_data.py, fetch_pluto_residential.py, update_data.py) daily for both methods.
+Observation: Track timing logs, error rates, and feedback forms.
+The Technology
+• Data Integration Layer: Python (Pandas, Requests, GeoPandas) with Socrata and Census
+APIs.
+• Database: PostgreSQL + PostGIS for spatial data storage and joins.
+• Visualization Interface: Streamlit + PyDeck for interactive ZIP choropleths and buildinglevel point maps.
+• Automation: GitHub Actions for daily data refresh and quality checks.
+
+Data Collection
+• System Logs: Capture processing start/end times and error counts per update cycle.
+
+48
+
+•
+•
+
+Database Metrics: Row counts, null values, and join success rates before and after
+integration.
+User Survey: Short Likert-scale survey (1–5) on data access ease and dashboard usability.
+
+49
+
+•
+
+Data File Format:
+o Columns: run_id, method, runtime_sec, errors, satisfaction_score.
+o Stored as trial_metrics.csv for analysis.
+
+Analysis of Results
+• Compute mean and standard deviation for processing times (control vs intervention).
+• Run paired t-tests to test significance of time reduction (p < 0.05).
+• Compare error rates and survey scores using percentage improvement.
+• Visualize results with bar charts and boxplots in Python (Seaborn / Matplotlib).
+• Assess whether improvements exceed the expected threshold (60% time reduction,
+40% satisfaction increase).
+Findings and Recommendations
+Findings (expected): Substantial runtime reduction (≥60%), fewer errors (≥50%), higher
+satisfaction (≥40%).
+Recommendations:
+•
+•
+•
+
+Adopt Python + PostGIS + Streamlit for ongoing research.
+Cap building points per ZIP (slider) and add server-side filters (landuse=01/02/03).
+Plan cloud deployment (Streamlit Cloud/AWS) and role-based access if moving
+beyond POC.
+
+Documentation of LLM use
+“Give a testable hypothesis for my project, including some metrics.”
+
+50
+
+Appendix H - Status Reports
+
+51
+
+52
+
+53
+
+54
+
+55
+
+56
+
+57
+
+Appendix I - Annotated Bibliography
+
+MASTER OF SCIENCE IN MANAGEMENT AND SYSTEMS
+Applied Project Capstone
+MASY GC- 4100
+MEMORANDUM
+TO:
+FROM:
+DATE:
+
+Dr. Andres Fortino
+Chaoou Zhang
+Nov 6, 2025
+
+RE:
+
+Literature Review Assignment A – 15-20 References
+The Annotated Bibliography
+
+References
+1. Barns, Sarah. “Smart Cities and Urban Data Platforms: Designing Interfaces for Smart
+Governance.” City, Culture and Society, vol. 12, 2018, pp. 5–12,
+https://doi.org/10.1016/j.ccs.2017.09.006.
+- Ranking: A (High relevance; peer-reviewed journal, widely cited in smartcity data platform research.)
+- Abstract: This article examines how urban data platforms can function as
+interfaces between citizens, governments, and private actors to enable “smart
+governance.” Barns argues that data platform design is not only a technical
+issue but a socio-political process that shapes transparency and civic
+engagement within cities. Empirical examples from European cities illustrate
+how interface choices influence data accessibility and trust.
+- Summary: Barns (2018) identifies urban dashboards as governance tools that
+mediate public-data flows and shape institutional responsiveness. The study
+suggests that inclusive design principles can expand the utility of data
+dashboards for citizen participation and policy decision-making.
+- Researcher comments: This paper supports the NOAH Dashboard’s goal of
+building transparent interfaces for housing data. It clarifies how interface
+design choices affect trust and access, informing my UI/UX criteria for the
+Streamlit implementation.
+
+58
+
+2. Pluto-Kossakowska, Joanna, et al. “Dashboard as a Platform for Community Engagement
+in a City Development—A Review of Techniques, Tools and Methods.” Sustainability,
+vol. 14, no. 17, 2022, p. 10809, https://doi.org/10.3390/su141710809.
+- Ranking: A (High relevance; peer-reviewed open-access journal; focus on
+dashboards for public engagement.)
+- Abstract: This paper explores how dashboard systems facilitate community
+involvement in sustainability projects. Using case studies of municipal
+sustainability dashboards, the author demonstrates how data visualization
+enhances understanding and collaboration between citizens and local
+governments.
+- Summary: Pluto-Kossakowska (2022) argues that well-designed dashboards
+create transparency and promote collective action on complex urban issues.
+The research emphasizes visual clarity, real-time updates, and open-source
+technologies as key factors in community trust.
+- Researcher comments: This article reinforces my project’s public-value
+objective by showing how open dashboards foster stakeholder trust. It informs
+the communication and design framework for Urban Labs’ housing data
+interface.
+
+3. Nidam, Yael, et al. “Practicing Data Inclusion: Co-Creation of an Urban Data
+Dashboard.” Environment and Planning. B, Urban Analytics and City Science, vol. 52,
+no. 1, 2025, pp. 7–25, https://doi.org/10.1177/23998083241245759.
+- Ranking: A (Recent, peer-reviewed journal specializing in urban analytics.)
+- Abstract: Nidam examines inclusive co-creation processes in developing
+urban dashboards. The study draws on participatory methods to show how
+users and planners collaborate to define metrics and interface features for
+equitable data use.
+- Summary: This research demonstrates that technical innovation must be
+matched by social inclusion to achieve sustainable urban data governance.
+The co-design framework helps ensure that dashboards serve diverse
+stakeholders beyond experts.
+- Researcher comments: It supports my change-management plan and
+stakeholder strategy, highlighting the need to engage Urban Labs analysts and
+policy partners in dashboard metric design.
+
+4. Silvestri, Stefano, et al. “An Urban Intelligence Architecture for Heterogeneous Data and
+Application Integration, Deployment and Orchestration.” Sensors (Basel, Switzerland),
+vol. 24, no. 7, 2024, p. 2376, https://doi.org/10.3390/s24072376.
+59
+
+-
+
+-
+
+-
+
+Ranking: A (High technical relevance; focus on data integration
+architectures.)
+Abstract: The paper proposes a modular urban intelligence architecture for
+integrating heterogeneous datasets from multiple sources. Using API pipelines
+and semantic mapping, the architecture supports real-time analytics for city
+management.
+Summary: Silvestri (2024) demonstrates how layered data integration
+frameworks improve efficiency and reduce redundancy in smart-city
+platforms. The study validates Python-based API connectors and open data
+standards for reproducible analysis.
+Researcher comments: This technical framework directly guides my NOAH
+data pipeline design, particularly the use of Census and PLUTO API
+integration for real-time data updating.
+
+5. Waddell, P. (2023). Data-driven multi-scale planning for housing affordability. Joint
+Center for Housing Studies of Harvard University.
+https://www.jchs.harvard.edu/research-areas/working-papers/data-driven-multi-scaleplanning-housing-affordability
+- Ranking: A (High relevance in housing affordability and data-driven urban
+planning.)
+- Abstract: Waddell argues that housing affordability analysis requires multiscale data models linking regional and neighborhood-level factors. The paper
+proposes a framework using open data and simulation tools to bridge macro
+and micro housing metrics.
+- Summary: This study illustrates how data integration across geographic
+levels enhances understanding of affordability patterns. It presents best
+practices for combining Census and local datasets for spatial visualization of
+rent burden.
+- Researcher comments: The methodology underpins my ZIP-level and
+borough-level visualizations in the NOAH Dashboard, supporting multi-scale
+comparisons of rent and income data.
+
+6. Sauvé-Schenk, Katrine, et al. “Decisions for Affordable/Social Housing (DASH) System:
+Envisioning Open and Transparent Data-Informed Decision Making.” International
+Journal on Homelessness, 2025, pp. 1–11, https://doi.org/10.5206/ijoh.2023.3.22863.
+- Ranking: A (Recent, peer-reviewed; focus on open data for housing policy.)
+- Abstract: This paper introduces DASH – an open-source decision-support
+system for affordable and social housing providers. It demonstrates how
+60
+
+-
+
+-
+
+transparent data and interactive dashboards improve policy coordination and
+public trust.
+Summary: The authors propose a modular architecture linking public housing
+registries, geospatial data, and cost indices to optimize allocation of social
+housing. They report that open data tools increase cross-agency collaboration.
+Researcher comments: This study parallels the NOAH Dashboard’s mission
+of data transparency for housing equity and confirms the value of interactive
+dashboards for non-profit decision support.
+
+7. Bentley, Rebecca, et al. “Cumulative Exposure to Poor Housing Affordability and Its
+Association with Mental Health in Men and Women.” Journal of Epidemiology and
+Community Health (1979), vol. 66, no. 9, 2012, pp. 761–66, https://doi.org/10.1136/jech2011-200291.
+- Ranking: A (Highly cited; peer-reviewed journal linking housing
+affordability to public health outcomes.)
+- Abstract: This population-based longitudinal study investigates how repeated
+exposure to poor housing affordability affects mental health. Using data from
+the Household Income and Labour Dynamics in Australia Survey (2001–
+2007), the authors find that prolonged spending of > 30 % of income on
+housing is associated with higher psychological distress, particularly among
+low-income women.
+- Summary: Bentley et al. (2011) demonstrate that sustained affordability
+stress produces cumulative mental-health effects beyond short-term financial
+hardship. They argue for housing-policy interventions that monitor long-term
+rent burden as a social-determinant indicator.
+- Researcher comments: This study supports NOAH’s decision to include
+“rent burden over time” as a critical metric in the dashboard. It illustrates how
+data on affordability and well-being can inform evidence-based housing
+policy for Urban Labs research.
+
+8. Yap, Winston, and Filip Biljecki. “A Global Feature-Rich Network Dataset of Cities and
+Dashboard for Comprehensive Urban Analyses.” Scientific Data, vol. 10, no. 1, 667,
+2023, https://doi.org/10.1038/s41597-023-02578-1.
+- Ranking: A (High-impact Nature Portfolio journal.)
+- Abstract: Presents a curated open-access dataset linking urban features –
+density, infrastructure, housing prices – for global cities to support
+comparative analytics.
+61
+
+-
+
+Summary: The authors describe data collection, standardization, and API
+access methods for urban datasets, enabling cross-city visual analysis.
+Researcher comments: Validates the data-model design of the NOAH
+Dashboard and its potential for comparative metrics beyond NYC.
+
+9. Biljanovska, Nina. “Housing Affordability: A New Dataset.” IMF Working Paper, vol.
+2023, no. 247, 2023, p. 1, https://doi.org/10.5089/9798400259746.001.
+- Ranking: A (Official IMF dataset paper – widely cited macro source.)
+- Abstract: Introduces a cross-country dataset on housing affordability
+indicators – income-to-rent ratios, price-to-income ratios, and policy indices –
+for 190 economies.
+- Summary: The paper outlines methodology for comparing affordability
+metrics and links micro data with macroeconomic contexts.
+- Researcher comments: Provides global context for NYC’s affordability
+metrics and benchmarks the NOAH Dashboard’s local findings against
+international trends.
+
+10. Lock, Oliver, et al. “A Review and Reframing of Participatory Urban Dashboards.” City,
+Culture and Society, vol. 20, 100294, 2020, https://doi.org/10.1016/j.ccs.2019.100294.
+- Ranking: A (Peer-reviewed SAGE journal.)
+- Abstract: Explores how participatory dashboards mediate relations between
+citizens and data. Analyzes case studies of London and Barcelona platforms.
+- Summary: Lock (2020) proposes a new framework for evaluating citizen
+engagement and transparency through digital interfaces.
+- Researcher comments: Guides my stakeholder communication plan and
+evaluation metrics for the Urban Labs prototype.
+
+11. Bibri, Simon Elias, and John Krogstie. “The Emerging Data–Driven Smart City and Its
+Innovative Applied Solutions for Sustainability: The Cases of London and Barcelona.”
+Energy Informatics, vol. 3, no. 1, 5, 2020, https://doi.org/10.1186/s42162-020-00108-6.
+- Ranking: A (Well-cited open-access journal by SpringerOpen.)
+- Abstract: Analyzes how data-driven approaches in two European cities
+support sustainability goals through open data and AI analytics.
+- Summary: Shows how data portals and dashboards drive policy innovation in
+housing and transportation.
+
+62
+
+-
+
+Researcher comments: Provides comparative evidence for how similar
+dashboards affect urban sustainability, informing the policy impact discussion
+of NOAH.
+
+12. Lloret, Ángel, et al. “Correction: Lloret et al. A Data-Driven Framework for Digital
+Transformation in Smart Cities: Integrating AI, Dashboards, and IoT Readiness. Sensors
+2025, 25, 5179.” Sensors (Basel, Switzerland), vol. 25, no. 19, 2025, p. 5938,
+https://doi.org/10.3390/s25195938.
+- Ranking: A (High relevance; MDPI Sensors is peer-reviewed and indexed in
+Scopus.)
+- Abstract: Proposes a comprehensive framework that combines AI algorithms,
+dashboards, and IoT infrastructure for smart-city data governance.
+- Summary: Lloret et al. (2025) demonstrate how integrating real-time data
+visualization with analytics improves urban management and citizen services.
+- Researcher comments: Supports NOAH’s technical stack integration and
+validates using Streamlit dashboards for real-time urban data analysis.
+
+13. Wolf, Kristina, et al. “Building Enduring Smart City Data Platforms to Provide Urban
+Management Support: Lessons Learnt from UK Urban Observatories and the US Smart
+Columbus Operating System.” Frontiers in Sustainable Cities, vol. 7, 1512847, 2025,
+https://doi.org/10.3389/frsc.2025.1512847.
+- Ranking: A (Frontiers journal – peer-reviewed and Scopus-indexed.)
+- Abstract: Examines a multi-year implementation of a smart-city data
+platform used by municipal departments for sustainability monitoring.
+- Summary: The case study finds that long-term maintenance and user training
+are critical for data platform success. Organizational change and leadership
+support enable continuous use.
+- Researcher comments: Offers lessons for the sustainability phase of the
+NOAH Dashboard – training, governance, and institutional adoption.
+
+14. Kitchin, Rob. “Real-Time City? Big Data and Smart Urbanism.” GeoJournal, vol. 79, no.
+1, 2014, pp. 1–14, https://doi.org/10.1007/s10708-013-9516-8.
+- Ranking: A (Highly cited; Springer peer-reviewed journal; key text in urban
+data and dashboard research.)
+- Abstract: Kitchin discusses how the rise of big data and real-time analytics is
+transforming urban governance. Cities are increasingly monitored and
+managed through dashboards, control rooms, and real-time visualization
+63
+
+-
+
+-
+
+systems. The paper analyzes technical and ethical challenges related to data
+quality, standardization, and interpretability within smart-city infrastructures.
+Summary: Kitchin (2016) argues that city dashboards have become core tools
+for governing urban systems by aggregating fragmented indicators into
+interpretable interfaces. However, he warns that “real-time cities” may create
+false transparency if data are poorly governed or unverified. This paper sets
+the conceptual foundation for critical and ethical dashboard development.
+Researcher comments: Kitchin’s analysis strengthens the NOAH project’s
+rationale for establishing clear data-validation and documentation standards. It
+supports the inclusion of data quality and transparency criteria in the
+Functional Requirement Specification and Technology Trial evaluation.
+
+15. Kitchin, Rob, et al. “Knowing and Governing Cities through Urban Indicators, City
+Benchmarking and Real-Time Dashboards.” Regional Studies, Regional Science, vol. 2,
+no. 1, 2015, pp. 6–28, https://doi.org/10.1080/21681376.2014.983149.
+- Ranking: A (peer-reviewed, open-access, written by one of the main authors
+in urban dashboards; widely cited — very safe to use.)
+- Abstract: This article examines how cities are increasingly being measured
+and governed through urban indicators, benchmarking systems, and real-time
+dashboards. The authors argue that these tools form part of a wider
+assemblage of data infrastructures that make cities more “legible” to
+governments, but they also shape what is made visible and what is ignored.
+The paper discusses technical, political, and epistemological issues in building
+and using dashboards.
+- Summary: Kitchin, Lauriault, and McArdle (2015) show that dashboards are
+not just visual toys — they are governing devices. By standardizing indicators
+and updating them frequently, cities can compare performance across space
+and time, support policy interventions, and communicate with the public. At
+the same time, the authors warn that dashboards depend on data quality, clear
+metadata, and careful indicator selection.
+- Researcher comments: This paper justifies why an NYC housing dashboard
+is a legitimate way to “know and govern” affordability issues, and it reminds
+us to document indicators (rent burden, vacancy, median income) clearly.
+
+64
+
+
