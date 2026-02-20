@@ -161,13 +161,25 @@ def generate_mapping(ctx, schema, config_file, output_dir):
 
 
 @cli.command()
-@click.option("--dry-run", is_flag=True, help="Preview migration without executing")
+@click.option("--clear", is_flag=True, help="Clear Neo4j before migrating")
 @click.pass_context
-def migrate(ctx, dry_run):
+def migrate(ctx, clear):
     """Migrate data from PostgreSQL to Neo4j"""
-    if dry_run:
-        console.print("[bold yellow]Dry run mode - no changes will be made[/bold yellow]")
-    console.print("[bold yellow]Data migration not yet implemented[/bold yellow]")
+    from noah_converter.data_migrator import DataMigrator
+
+    if clear:
+        console.print("[bold red]Warning: Neo4j will be cleared before migration[/bold red]")
+
+    console.print("[bold blue]Starting NOAH data migration...[/bold blue]")
+    migrator = DataMigrator()
+    result = migrator.migrate_all(clear=clear)
+    migrator.close()
+
+    total_nodes = sum(result["nodes"].values())
+    total_rels  = sum(result["relationships"].values())
+    console.print(f"\n[green]✅ Migration complete![/green]")
+    console.print(f"   Nodes created:         [bold]{total_nodes:,}[/bold]")
+    console.print(f"   Relationships created: [bold]{total_rels:,}[/bold]")
 
 
 @cli.command()
