@@ -365,6 +365,96 @@ def migrate(ctx, clear, mapping_rules):
 
 
 @cli.command()
+@click.option("--question", "-q", default=None, help="Natural language question (omit for interactive REPL)")
+@click.option("--provider", default="claude", show_default=True, help="LLM provider: claude, openai, gemini")
+@click.option("--model", default=None, help="Model ID (uses provider default if not set)")
+@click.option("--no-execute", is_flag=True, help="Generate Cypher only, skip Neo4j execution")
+@click.option("--no-explain", is_flag=True, help="Skip natural language explanation of results")
+@click.pass_context
+def query(ctx, question, provider, model, no_execute, no_explain):
+    """Query the graph using natural language (Text2Cypher)"""
+    import os
+    from noah_converter.text2cypher import Text2CypherTranslator
+
+    config = ctx.obj["config"]
+
+    api_key = config.text2cypher.api_key or os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key or api_key.startswith("${"):
+        console.print(
+            "[red]✗[/red] ANTHROPIC_API_KEY not set. "
+            "Export it or add to config.yaml under text2cypher.api_key"
+        )
+        return
+
+    neo4j_conn = Neo4jConnection(config.target_db)
+
+    try:
+        console.print("[bold blue]Text2Cypher Query Interface[/bold blue]")
+        console.print("[dim]Initializing schema context from Neo4j...[/dim]")
+
+        translator = Text2CypherTranslator(
+            neo4j_conn=neo4j_conn,
+            llm_provider=provider,
+            api_key=api_key,
+            model=model or config.text2cypher.model,
+        )
+
+        console.print(f"[green]✓[/green] {translator.get_schema_summary()}")
+        console.print()
+
+        def run_query(q: str):
+            with console.status("[cyan]Calling LLM to generate Cypher...[/cyan]"):
+                result = translator.query(
+                    question=q,
+                    execute=not no_execute,
+                    explain=not no_explain,
+                )
+
+            console.print("\n[bold]Generated Cypher:[/bold]")
+            console.print(f"[cyan]{result['cypher']}[/cyan]")
+
+            if result.get("error"):
+                console.print(f"\n[red]Error:[/red] {result['error']}")
+                return
+
+            if result.get("results") is not None:
+                records = result["results"]
+                console.print(f"\n[bold]Results:[/bold] {len(records)} row(s)")
+                if records:
+                    cols = list(records[0].keys())
+                    tbl = RichTable(show_header=True, header_style="bold magenta")
+                    for col in cols:
+                        tbl.add_column(col)
+                    for row in records[:25]:
+                        tbl.add_row(*[str(row.get(c, "")) for c in cols])
+                    console.print(tbl)
+                    if len(records) > 25:
+                        console.print(f"[dim]... and {len(records) - 25} more rows[/dim]")
+
+            if result.get("explanation"):
+                console.print(f"\n[bold]Explanation:[/bold]")
+                console.print(result["explanation"])
+
+        if question:
+            run_query(question)
+        else:
+            console.print("[dim]Interactive mode — type 'exit' or 'quit' to stop.[/dim]\n")
+            while True:
+                try:
+                    q = click.prompt("Question", prompt_suffix=" > ")
+                    if q.lower().strip() in ("exit", "quit", "q", ""):
+                        break
+                    run_query(q)
+                    console.print()
+                except (KeyboardInterrupt, EOFError):
+                    break
+            console.print("\n[dim]Goodbye![/dim]")
+
+    finally:
+        neo4j_conn.close()
+
+
+@cli.command()
 @click.pass_context
 def validate(ctx):
     """Validate migrated data"""
