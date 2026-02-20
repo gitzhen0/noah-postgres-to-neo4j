@@ -73,6 +73,8 @@ class MappingConfigLoader:
             source_table=rel_config.get('source_table'),
             from_column=rel_config.get('from_column'),
             to_column=rel_config.get('to_column'),
+            from_id_column=rel_config.get('from_id_column'),
+            to_id_column=rel_config.get('to_id_column'),
             computation_query=rel_config.get('computation_query'),
             bidirectional=rel_config.get('bidirectional', False)
         )

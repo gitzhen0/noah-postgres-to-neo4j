@@ -92,6 +92,12 @@ class RelationshipType:
     from_column: Optional[str] = None
     to_column: Optional[str] = None
 
+    # For FK relationships: which columns in source_table supply the node merge-key values
+    # from_id_column: column whose value equals from_label's merge key
+    # to_id_column:   column whose value equals to_label's merge key
+    from_id_column: Optional[str] = None
+    to_id_column: Optional[str] = None
+
     # For computed relationships (e.g., spatial)
     computation_query: Optional[str] = None
 
@@ -108,6 +114,8 @@ class RelationshipType:
             "source_table": self.source_table,
             "from_column": self.from_column,
             "to_column": self.to_column,
+            "from_id_column": self.from_id_column,
+            "to_id_column": self.to_id_column,
             "computation_query": self.computation_query,
             "bidirectional": self.bidirectional
         }

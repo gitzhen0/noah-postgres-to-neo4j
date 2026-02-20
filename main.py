@@ -161,17 +161,199 @@ def generate_mapping(ctx, schema, config_file, output_dir):
 
 
 @cli.command()
-@click.option("--clear", is_flag=True, help="Clear Neo4j before migrating")
+@click.option("--schema", default="public", help="PostgreSQL schema to analyze")
+@click.option("--hints", default="", help="Free-text context about the database domain")
+@click.option(
+    "--output",
+    default="outputs/mapping_draft.yaml",
+    type=click.Path(),
+    help="Output path for the draft mapping YAML",
+)
+@click.option(
+    "--save-raw",
+    is_flag=True,
+    help="Also save the raw LLM JSON response alongside the YAML",
+)
 @click.pass_context
-def migrate(ctx, clear):
-    """Migrate data from PostgreSQL to Neo4j"""
-    from noah_converter.data_migrator import DataMigrator
+def interpret(ctx, schema, hints, output, save_raw):
+    """[Stage 2] Use LLM to analyze PostgreSQL schema and generate draft mapping_rules.yaml"""
+    import os
+    from rich.panel import Panel
+    from rich.text import Text
+    from noah_converter.schema_interpreter import SchemaInterpreter
+
+    config = ctx.obj["config"]
+
+    # Step 1: Analyze schema
+    console.print("\n[bold blue]Stage 2: LLM Schema Interpreter[/bold blue]\n")
+    console.print("[cyan]Step 1:[/cyan] Analyzing PostgreSQL schema...")
+
+    pg_conn = PostgreSQLConnection(config.source_db)
+    from noah_converter.utils.config import SchemaAnalyzerConfig
+    analyzer = SchemaAnalyzer(pg_conn, config.schema_analyzer)
+    tables = analyzer.analyze(schema)
+    console.print(f"[green]✓[/green] Found {len(tables)} tables\n")
+
+    # Step 2: Call LLM
+    api_key = config.text2cypher.api_key or os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key or api_key.startswith("${"):
+        console.print(
+            "[red]✗[/red] ANTHROPIC_API_KEY not set. "
+            "Export it or add to config.yaml under text2cypher.api_key"
+        )
+        return
+
+    console.print(f"[cyan]Step 2:[/cyan] Calling LLM ({config.text2cypher.model})...")
+    interpreter = SchemaInterpreter(
+        api_key=api_key,
+        model=config.text2cypher.model,
+        max_tokens=6000,
+    )
+    result = interpreter.interpret(
+        tables=tables,
+        user_hints=hints,
+        metadata={"database": config.source_db.database},
+    )
+    console.print(
+        f"[green]✓[/green] LLM produced "
+        f"{len(result.nodes)} nodes, "
+        f"{len(result.relationships)} relationships, "
+        f"{len(result.skipped_tables)} skipped tables\n"
+    )
+
+    # Step 3: Show summary with confidence levels
+    _display_interpretation_summary(result)
+
+    # Step 4: Validation warnings
+    if result.validation_warnings:
+        console.print("\n[bold yellow]⚠ Validation Warnings:[/bold yellow]")
+        for w in result.validation_warnings:
+            console.print(f"  [yellow]•[/yellow] {w}")
+
+    # Step 5: Save output
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(result.mapping_yaml)
+    console.print(f"\n[green]✅ Draft mapping saved:[/green] {output_path}")
+
+    if save_raw:
+        raw_path = output_path.with_suffix(".llm_response.json")
+        raw_path.write_text(result.raw_llm_response)
+        console.print(f"[dim]Raw LLM response: {raw_path}[/dim]")
+
+    console.print(
+        "\n[dim]Review the draft, then copy to config/mapping_rules.yaml "
+        "and run: python main.py migrate[/dim]"
+    )
+
+    pg_conn.close()
+
+
+def _display_interpretation_summary(result):
+    """Display a confidence-colored summary of LLM decisions."""
+    from rich.table import Table as RichTable
+
+    CONF_COLOR = {"high": "green", "medium": "yellow", "low": "red"}
+
+    # Nodes table
+    node_table = RichTable(title="Proposed Node Types", show_header=True, header_style="bold")
+    node_table.add_column("Label", style="cyan")
+    node_table.add_column("Source Table", style="dim")
+    node_table.add_column("Merge Key(s)", style="magenta")
+    node_table.add_column("Confidence")
+    node_table.add_column("Reasoning", max_width=50)
+
+    for nd in result.nodes:
+        color = CONF_COLOR.get(nd.confidence, "white")
+        node_table.add_row(
+            nd.label,
+            nd.source_table,
+            ", ".join(nd.merge_keys),
+            f"[{color}]{nd.confidence}[/{color}]",
+            nd.reasoning,
+        )
+    console.print(node_table)
+    console.print()
+
+    # Relationships table
+    rel_table = RichTable(title="Proposed Relationships", show_header=True, header_style="bold")
+    rel_table.add_column("Type", style="cyan")
+    rel_table.add_column("From → To", style="dim")
+    rel_table.add_column("Source", style="dim")
+    rel_table.add_column("Confidence")
+    rel_table.add_column("Reasoning", max_width=45)
+
+    for rd in result.relationships:
+        color = CONF_COLOR.get(rd.confidence, "white")
+        rel_table.add_row(
+            rd.type,
+            f"{rd.from_label} → {rd.to_label}",
+            rd.source_type,
+            f"[{color}]{rd.confidence}[/{color}]",
+            rd.reasoning,
+        )
+    console.print(rel_table)
+    console.print()
+
+    # Skipped tables
+    if result.skipped_tables:
+        console.print("[dim]Skipped tables:[/dim]")
+        for s in result.skipped_tables:
+            console.print(f"  [dim]• {s.table}: {s.reason}[/dim]")
+
+
+@cli.command()
+@click.option("--clear", is_flag=True, help="Clear Neo4j before migrating")
+@click.option(
+    "--mapping-rules",
+    default="config/mapping_rules.yaml",
+    type=click.Path(),
+    help="Path to mapping_rules.yaml (default: config/mapping_rules.yaml)",
+)
+@click.pass_context
+def migrate(ctx, clear, mapping_rules):
+    """Migrate data from PostgreSQL to Neo4j (config-driven via mapping_rules.yaml)"""
+    from noah_converter.data_migrator import GenericMigrator
+    from noah_converter.mapping_engine.config import MappingConfigLoader
+
+    config = ctx.obj["config"]
 
     if clear:
         console.print("[bold red]Warning: Neo4j will be cleared before migration[/bold red]")
 
-    console.print("[bold blue]Starting NOAH data migration...[/bold blue]")
-    migrator = DataMigrator()
+    # Load graph schema from YAML
+    rules_path = Path(mapping_rules)
+    if not rules_path.exists():
+        console.print(f"[red]✗[/red] Mapping rules not found: {rules_path}")
+        return
+
+    console.print(f"[bold blue]Starting NOAH data migration...[/bold blue]")
+    console.print(f"[dim]Mapping rules: {rules_path}[/dim]")
+
+    schema = MappingConfigLoader.load_graph_schema(str(rules_path))
+    console.print(
+        f"[green]✓[/green] Loaded schema: "
+        f"{len(schema.nodes)} node types, {len(schema.relationships)} relationship types"
+    )
+
+    # Build connection params from config
+    pg_dsn = {
+        "host": config.source_db.host,
+        "port": config.source_db.port,
+        "dbname": config.source_db.database,
+        "user": config.source_db.user,
+        "password": config.source_db.password,
+    }
+    neo4j_uri = config.target_db.uri
+    neo4j_auth = (config.target_db.user, config.target_db.password)
+
+    migrator = GenericMigrator(
+        pg_dsn=pg_dsn,
+        neo4j_uri=neo4j_uri,
+        neo4j_auth=neo4j_auth,
+        schema=schema,
+        batch_size=config.migration.batch_size,
+    )
     result = migrator.migrate_all(clear=clear)
     migrator.close()
 

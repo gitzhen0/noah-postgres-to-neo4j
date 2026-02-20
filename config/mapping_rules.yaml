@@ -30,7 +30,7 @@ nodes:
   # ---------------------------------------------------------------------------
   - label: HousingProject
     source_table: housing_projects
-    primary_property: project_id
+    primary_property: db_id
     has_geometry: true
     geometry_column: geom
     indexes:
@@ -39,8 +39,14 @@ nodes:
       - project_start_date
       - total_units
     merge_keys:
-      - project_id
+      - db_id
     properties:
+      - name: db_id
+        type: integer
+        nullable: false
+        source_column: id
+        source_type: serial
+
       - name: project_id
         type: string
         nullable: false
@@ -278,19 +284,6 @@ nodes:
         source_column: total_units
         source_type: integer
 
-      # Spatial properties (auto-generated from PostGIS geom column)
-      - name: center_lat
-        type: float
-        nullable: true
-        source_column: geom
-        transformation: "ST_Y(ST_Centroid(geom))"
-
-      - name: center_lon
-        type: float
-        nullable: true
-        source_column: geom
-        transformation: "ST_X(ST_Centroid(geom))"
-
   # ---------------------------------------------------------------------------
   # ZipCode: NYC ZIP code areas with geometry (178 ZIP codes)
   # ---------------------------------------------------------------------------
@@ -327,6 +320,12 @@ nodes:
         nullable: true
         source_column: geom
         transformation: "ST_X(ST_Centroid(geom))"
+
+      - name: area_km2
+        type: float
+        nullable: true
+        source_column: geom
+        transformation: "ST_Area(geom::geography) / 1000000.0"
 
   # ---------------------------------------------------------------------------
   # CensusTract: Census tract level rent burden data (766 tracts)
@@ -365,6 +364,24 @@ nodes:
         nullable: true
         source_column: severe_burden_rate
         source_type: decimal
+
+      - name: center_lat
+        type: float
+        nullable: true
+        source_column: geometry
+        transformation: "ST_Y(ST_Centroid(geometry))"
+
+      - name: center_lon
+        type: float
+        nullable: true
+        source_column: geometry
+        transformation: "ST_X(ST_Centroid(geometry))"
+
+      - name: area_km2
+        type: float
+        nullable: true
+        source_column: geometry
+        transformation: "ST_Area(geometry::geography) / 1000000.0"
 
   # ---------------------------------------------------------------------------
   # AffordabilityZone: ZIP-level aggregated affordability metrics
@@ -430,11 +447,14 @@ relationships:
     source_table: housing_projects
     from_column: postcode
     to_column: zip_code
+    from_id_column: id       # column in housing_projects for HousingProject.db_id
+    to_id_column: postcode   # column in housing_projects for ZipCode.zip_code
     bidirectional: false
     properties: []
 
   # HousingProject --[IN_CENSUS_TRACT]--> CensusTract
-  # Computed from census_tract field in housing_projects
+  # Computed: borough + census_tract -> geo_id (state+county+tract*100, zero-padded to 6 digits)
+  # Match rate ~78% of projects with census_tract set
   - type: IN_CENSUS_TRACT
     from_label: HousingProject
     to_label: CensusTract
@@ -443,15 +463,38 @@ relationships:
     from_column: census_tract
     to_column: geo_id
     computation_query: |
-      SELECT h.project_id as from_id, r.geo_id as to_id
+      SELECT
+        h.id AS from_id,
+        (CASE h.borough
+          WHEN 'Manhattan'     THEN '36061'
+          WHEN 'Bronx'         THEN '36005'
+          WHEN 'Brooklyn'      THEN '36047'
+          WHEN 'Queens'        THEN '36081'
+          WHEN 'Staten Island' THEN '36085'
+        END || LPAD(
+          (CAST(h.census_tract AS numeric) * 100)::bigint::text,
+          6, '0'
+        )) AS to_id
       FROM housing_projects h
-      JOIN rent_burden r ON r.tract_name LIKE '%' || h.census_tract || '%'
-      WHERE h.census_tract IS NOT NULL AND h.census_tract != ''
+      JOIN rent_burden rb ON rb.geo_id = (
+        CASE h.borough
+          WHEN 'Manhattan'     THEN '36061'
+          WHEN 'Bronx'         THEN '36005'
+          WHEN 'Brooklyn'      THEN '36047'
+          WHEN 'Queens'        THEN '36081'
+          WHEN 'Staten Island' THEN '36085'
+        END || LPAD(
+          (CAST(h.census_tract AS numeric) * 100)::bigint::text,
+          6, '0'
+        ))
+      WHERE h.census_tract IS NOT NULL
+        AND h.census_tract <> ''
+        AND h.census_tract ~ '^[0-9]+(\.[0-9]+)?$'
     bidirectional: false
     properties: []
 
   # ZipCode --[HAS_AFFORDABILITY_DATA]--> AffordabilityZone
-  # FK relationship: zip_shapes.zip_code -> noah_affordability_analysis.zip_code
+  # FK relationship: both nodes keyed by zip_code in noah_affordability_analysis
   - type: HAS_AFFORDABILITY_DATA
     from_label: ZipCode
     to_label: AffordabilityZone
@@ -459,11 +502,13 @@ relationships:
     source_table: noah_affordability_analysis
     from_column: zip_code
     to_column: zip_code
+    from_id_column: zip_code   # column in source_table = ZipCode.zip_code
+    to_id_column: zip_code     # column in source_table = AffordabilityZone.zip_code
     bidirectional: false
     properties: []
 
   # ZipCode --[NEIGHBORS]--> ZipCode
-  # Spatial relationship based on geographic adjacency
+  # Spatial relationship based on geographic adjacency (ST_Touches or ST_Intersects)
   - type: NEIGHBORS
     from_label: ZipCode
     to_label: ZipCode
@@ -471,23 +516,29 @@ relationships:
     bidirectional: true
     computation_query: |
       SELECT
-        a.zip_code AS from_zip,
-        b.zip_code AS to_zip,
+        a.zip_code AS from_id,
+        b.zip_code AS to_id,
         ROUND(
           (ST_Distance(
             ST_Centroid(a.geom::geography),
             ST_Centroid(b.geom::geography)
-          ) / 1000.0)::numeric,
-          2
-        ) AS distance_km
+          ) / 1000.0)::numeric, 3
+        ) AS distance_km,
+        ST_Touches(a.geom, b.geom) AS is_adjacent
       FROM zip_shapes a
       JOIN zip_shapes b
-        ON ST_Touches(a.geom, b.geom)
-        OR ST_DWithin(a.geom::geography, b.geom::geography, 500)
-      WHERE a.zip_code < b.zip_code
+        ON a.zip_code < b.zip_code
+       AND (ST_Touches(a.geom, b.geom) OR ST_Intersects(a.geom, b.geom))
+      ORDER BY a.zip_code, distance_km
     properties:
       - name: distance_km
         type: float
         nullable: true
         source_column: distance_km
         source_type: numeric
+
+      - name: is_adjacent
+        type: boolean
+        nullable: true
+        source_column: is_adjacent
+        source_type: boolean
