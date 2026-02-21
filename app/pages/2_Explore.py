@@ -256,33 +256,37 @@ LIMIT 40""",
                     added_nodes: set = set()
                     added_edges: set = set()
 
+                    def _add_node(node: "Node") -> None:
+                        if node.id in added_nodes:
+                            return
+                        label = list(node.labels)[0] if node.labels else "Node"
+                        name = (
+                            node.get("project_name")
+                            or node.get("zip_code")
+                            or node.get("geo_id")
+                            or f"{label}#{node.id}"
+                        )
+                        color = NODE_COLORS.get(label, "#888")
+                        size  = NODE_SIZES.get(label, 15)
+                        tip = f"<b>:{label}</b><br>" + "<br>".join(
+                            f"{k}: {v}" for k, v in dict(node).items()
+                            if v is not None
+                        )
+                        net.add_node(
+                            node.id, label=str(name)[:24],
+                            color=color, size=size, title=tip,
+                            font={"color": "white", "size": 11},
+                        )
+                        added_nodes.add(node.id)
+
                     for record in records:
                         for val in record.values():
                             if isinstance(val, Node):
-                                if val.id not in added_nodes:
-                                    label = list(val.labels)[0] if val.labels else "Node"
-                                    # Pick a display name from common property keys
-                                    name = (
-                                        val.get("project_name")
-                                        or val.get("zip_code")
-                                        or val.get("geo_id")
-                                        or f"{label}#{val.id}"
-                                    )
-                                    color = NODE_COLORS.get(label, "#888")
-                                    size  = NODE_SIZES.get(label, 15)
-                                    # Tooltip: all properties
-                                    tip = f"<b>:{label}</b><br>" + "<br>".join(
-                                        f"{k}: {v}" for k, v in dict(val).items()
-                                        if v is not None
-                                    )
-                                    net.add_node(
-                                        val.id, label=str(name)[:24],
-                                        color=color, size=size, title=tip,
-                                        font={"color": "white", "size": 11},
-                                    )
-                                    added_nodes.add(val.id)
-
+                                _add_node(val)
                             elif isinstance(val, Relationship):
+                                # Ensure both endpoint nodes exist before adding edge
+                                _add_node(val.start_node)
+                                _add_node(val.end_node)
                                 eid = val.id
                                 if eid not in added_edges:
                                     net.add_edge(
