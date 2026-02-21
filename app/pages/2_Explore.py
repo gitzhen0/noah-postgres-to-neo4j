@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.theme import inject_theme
 from utils.connection import run_query
 from utils.saved_queries import list_saved, save_query, delete_query
+from utils.geojson_export import rows_to_geojson
 
 st.set_page_config(
     page_title="Explore — NYC Housing Graph",
@@ -155,12 +156,26 @@ ORDER BY z.borough, z.zip_code""",
             if rows:
                 df = pd.DataFrame(rows)
                 st.dataframe(df, use_container_width=True, hide_index=True)
-                st.download_button(
-                    "↓ Download CSV",
-                    df.to_csv(index=False),
-                    file_name="cypher_results.csv",
-                    mime="text/csv",
-                )
+                dl1, dl2, _sp = st.columns([1, 1, 4])
+                with dl1:
+                    st.download_button(
+                        "↓ CSV",
+                        df.to_csv(index=False),
+                        file_name="cypher_results.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                    )
+                with dl2:
+                    geojson = rows_to_geojson(rows)
+                    st.download_button(
+                        "↓ GeoJSON",
+                        geojson or "{}",
+                        file_name="cypher_results.geojson",
+                        mime="application/geo+json",
+                        use_container_width=True,
+                        disabled=geojson is None,
+                        help="Available when results contain center_lat / center_lon columns",
+                    )
             else:
                 st.info("No results.")
 

@@ -177,10 +177,24 @@ Plain-English querying of the graph:
 
 ### 7. Streamlit Dashboard
 
-Three-page web app:
+Five-page web app:
 - **Home** — Project overview, key metrics, live graph stats
-- **Ask** — Natural-language query interface with example chips
-- **Explore** — Raw Cypher editor with schema reference
+- **Ask** — Natural-language query interface; auto bar chart; Explain panel (traversal diagram + LLM summary); CSV and GeoJSON export
+- **Explore** — Cypher editor with 4 tabs: Query Editor, Graph View (pyvis network), Saved Queries, Schema Reference; CSV and GeoJSON export
+- **Templates** — 5 parameterized query templates with dropdowns and sliders (no Cypher required)
+- **Insights** — Pre-built visualizations: borough breakdown, rent burden distribution, income vs. burden scatter
+
+### 8. GeoJSON Export
+
+Any query result containing `center_lat` / `center_lon` columns can be exported as a GeoJSON FeatureCollection (`.geojson`) from both the Ask and Explore pages. Compatible with QGIS, Mapbox, Leaflet, and ArcGIS.
+
+### 9. Educational Notebook
+
+`notebooks/03_graph_vs_sql_tutorial.ipynb` — classroom-ready Jupyter notebook:
+- SQL vs Cypher side-by-side comparisons for 4 query patterns
+- Full benchmark visualization (8 queries, PG vs Neo4j)
+- 3 graded lab exercises (easy/medium/hard) with answer keys and rubric
+- Instructor notes with timing guide and assessment options
 
 ---
 
@@ -230,10 +244,16 @@ noah_postgres_to_neo4j/
 ├── app/                          # Streamlit dashboard
 │   ├── Home.py                   # Landing page with metrics
 │   ├── pages/
-│   │   ├── 1_Ask.py              # Natural-language query page
-│   │   └── 2_Explore.py          # Cypher editor + schema reference
+│   │   ├── 1_Ask.py              # Natural-language query page (+ GeoJSON export)
+│   │   ├── 2_Explore.py          # Cypher editor, Graph View, Saved Queries, Schema
+│   │   ├── 3_Templates.py        # Parameterized query templates
+│   │   ├── 4_Insights.py         # Pre-built visualizations
+│   │   └── 5_Settings.py         # API key management
 │   └── utils/
 │       ├── connection.py         # Neo4j driver wrapper
+│       ├── explain.py            # Cypher → Graphviz DOT parser
+│       ├── geojson_export.py     # GeoJSON FeatureCollection export
+│       ├── saved_queries.py      # Saved query persistence
 │       └── theme.py              # CSS theme injection
 ├── src/noah_converter/           # Core library
 │   ├── schema_analyzer/          # PostgreSQL introspection
@@ -337,6 +357,19 @@ python scripts/performance_comparison.py
 | De Virgilio et al. (2013) — ACM GRADES | Formal RDBMS-to-graph conversion framework |
 | Minder et al. (2024) — ArXiv:2406.04995 | Data2Neo: open-source Neo4j integration library |
 | Ozsoy et al. (2024) — ArXiv:2412.10064 | Text2Cypher: NL querying of graph databases |
+
+---
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| `docs/CAPSTONE_REPORT.md` | Full capstone report (NYU SPS MASY format, ~4,000 words) |
+| `docs/api/API_REFERENCE.md` | Public Python API reference for all modules |
+| `docs/architecture/SYSTEM_ARCHITECTURE.md` | 6-stage pipeline, data flow, design decisions |
+| `docs/guides/USER_GUIDE.md` | End-user guide (Ask, Explore, Templates pages) |
+| `docs/guides/DEPLOYMENT.md` | Local, Docker, and classroom deployment |
+| `notebooks/03_graph_vs_sql_tutorial.ipynb` | Educational notebook with exercises and answer keys |
 
 ---
 

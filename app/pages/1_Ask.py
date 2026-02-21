@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from utils.theme import inject_theme
 from utils.connection import get_config, run_query
 from utils.explain import cypher_to_dot
+from utils.geojson_export import rows_to_geojson
 
 st.set_page_config(
     page_title="Ask — NYC Housing Graph",
@@ -178,7 +179,7 @@ if result:
         if rows:
             df = pd.DataFrame(rows)
 
-            meta_col, dl_col = st.columns([4, 1])
+            meta_col, dl_col, geo_col = st.columns([4, 1, 1])
             with meta_col:
                 st.markdown(
                     f'<div class="result-meta">'
@@ -194,6 +195,17 @@ if result:
                     file_name="results.csv",
                     mime="text/csv",
                     use_container_width=True,
+                )
+            with geo_col:
+                geojson = rows_to_geojson(rows)
+                st.download_button(
+                    "↓ GeoJSON",
+                    geojson or "{}",
+                    file_name="results.geojson",
+                    mime="application/geo+json",
+                    use_container_width=True,
+                    disabled=geojson is None,
+                    help="Available when results contain center_lat / center_lon columns",
                 )
 
             st.dataframe(df, use_container_width=True, hide_index=True)

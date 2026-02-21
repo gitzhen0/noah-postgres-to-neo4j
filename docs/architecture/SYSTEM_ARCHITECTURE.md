@@ -234,22 +234,28 @@ class OpenAIProvider:     # uses gpt-4o
 
 ## Streamlit Dashboard (`app/`)
 
-Three pages:
+Five pages:
 
 | Page | File | Purpose |
 |---|---|---|
 | Home | `app/Home.py` | Project overview, live Neo4j metrics, pipeline diagram |
-| Ask | `app/pages/1_Ask.py` | NL query → Cypher → results table |
-| Explore | `app/pages/2_Explore.py` | Raw Cypher editor + schema reference |
+| Ask | `app/pages/1_Ask.py` | NL query → Cypher → results table; Explain panel; CSV + GeoJSON export |
+| Explore | `app/pages/2_Explore.py` | Cypher editor (4 tabs); pyvis Graph View; Saved Queries; Schema Reference; CSV + GeoJSON export |
+| Templates | `app/pages/3_Templates.py` | 5 parameterized query templates with dropdowns and sliders |
+| Insights | `app/pages/4_Insights.py` | Pre-built visualizations (borough, rent burden, income vs. burden scatter) |
 
 **State management** (Streamlit session_state):
 - `ask_question` — persists the question text across reruns
 - `_result` — stores last query result (rows, elapsed, error)
 - `cypher_editor` — persists Cypher text across Load/Run clicks
+- `graph_cypher` — persists Graph View query
 
-**Connection** (`app/utils/connection.py`):
-- Reads Neo4j credentials from `st.secrets` or environment variables
-- Returns results as `list[dict]` — Streamlit-friendly
+**Utility modules** (`app/utils/`):
+- `connection.py` — Neo4j driver wrapper; reads credentials from `.env` or `st.secrets`
+- `explain.py` — parses Cypher MATCH patterns → Graphviz DOT for path visualization
+- `geojson_export.py` — converts lat/lon result rows to GeoJSON FeatureCollection
+- `saved_queries.py` — persists named queries to `app/saved_queries.json`
+- `theme.py` — CSS theme injection
 
 ---
 

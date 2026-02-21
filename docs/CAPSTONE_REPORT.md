@@ -45,9 +45,10 @@ The bot successfully migrated all 8,604 housing projects from the NOAH PostgreSQ
 5. Implementation
 6. Evaluation Results
 7. Issues Encountered
-8. Lessons Learned
-9. Conclusion and Future Work
-10. References
+8. Ethical Considerations
+9. Lessons Learned
+10. Conclusion and Future Work
+11. References
 
 ---
 
@@ -328,33 +329,65 @@ Three UI bugs were discovered and fixed during development:
 
 ---
 
-## 8. Lessons Learned
+## 8. Ethical Considerations
 
-### 8.1 Precomputation is a First-Class Design Decision
+### 8.1 Housing Data and Community Equity
+
+The NOAH database contains detailed information about affordable housing units, rent burden rates, and household income across New York City ZIP codes and census tracts. Working with this data entails responsibilities that extend beyond technical correctness.
+
+**Displacement risk:** Identifying census tracts with "high rent burden" or ZIP codes with "low affordability" could, if misused, inform real estate investment strategies that accelerate gentrification and displace existing tenants. The tool is designed for Urban Lab researchers and policy analysts, not commercial real estate actors. Access controls and clear documentation of intended use cases are therefore not just technical features — they are ethical requirements.
+
+**Data accuracy and harm:** Inaccurate data — for example, incorrectly linking a housing project to a high-burden census tract — could misinform policy decisions affecting community resources. The migration audit step (row-count verification, relationship integrity checks) addresses this by catching data loss before the graph is published. Any deployment should include a data provenance statement noting the source, vintage, and known limitations of the underlying datasets.
+
+### 8.2 Privacy and Sensitive Community Information
+
+Housing data is a category of community-sensitive information. Although no individual-level data is stored in the NOAH database (all records are project-level or aggregate tract-level), the combination of location, income, and unit counts can enable inferences about which communities are economically vulnerable.
+
+**Aggregation risk:** The graph structure enables multi-hop traversal that can cross-reference affordability, rent burden, and project density in ways not visible in siloed relational tables. Future extensions adding owner/LLC network data (ACRIS) would substantially increase the sensitivity of the graph, enabling inference about individual property ownership patterns. Such extensions should be accompanied by a privacy impact assessment before deployment.
+
+**Data minimization:** The migration pipeline explicitly excludes geometry blobs (WKT/GeoJSON polygons) from Neo4j, storing only scalar centroid coordinates. This decision was partly technical (Neo4j does not natively store WKB) but also reflects a data minimization principle: store only what is needed to answer the defined query patterns.
+
+### 8.3 Responsible Use of Graph Pattern-Matching
+
+Graph databases are particularly powerful for pattern discovery — identifying clusters, outliers, and network connections that are invisible in flat tables. This capability is a double-edged sword in housing policy contexts.
+
+**Avoiding discriminatory targeting:** Cypher traversal queries can identify, for example, all housing projects within two hops of a high-burden tract in a specific borough. If such queries were used to identify communities for differential resource allocation (positive) or for targeted real estate speculation (negative), the technical capability is identical. The Text2Cypher interface includes schema-aware prompting that constrains the LLM to the defined analytical use cases, but this is not a complete safeguard.
+
+**Transparency:** The "Show Cypher" toggle in the Ask interface was designed partly with accountability in mind: users can see exactly which graph traversal generated their results. This supports audit trails for regulatory or policy reporting contexts.
+
+### 8.4 Urban Lab Research Obligations
+
+As a Digital Forge Lab and NYU-affiliated project, this tool operates within an institutional research ethics framework. The NOAH data was assembled for housing affordability research; using it for commercial purposes or sharing it with parties outside the approved research context would violate those terms of use. The project documentation includes a scope boundary (Owner/LLC network data explicitly deferred) in part because that data volume and sensitivity warrants a separate ethical review before incorporation.
+
+---
+
+## 9. Lessons Learned
+
+### 9.1 Precomputation is a First-Class Design Decision
 
 The single instance where Neo4j outperformed PostgreSQL (Q4, 1.6×) directly resulted from migrating a computed relationship (`IN_CENSUS_TRACT`) rather than a raw foreign key. This validates a key graph database design principle: **model the queries you want to answer, not just the data you have**. Future migrations should systematically identify multi-table joins in production SQL and pre-compute them as direct graph edges.
 
-### 8.2 Scale Determines the Performance Story
+### 9.2 Scale Determines the Performance Story
 
 At 8,604 rows, PostgreSQL's local execution advantage dominates. The honest finding is that Neo4j provides its performance advantage at scale (millions of nodes, deep traversal queries). For an honest evaluation, the project framing should emphasize code simplicity and scalability potential rather than claiming immediate runtime advantages for small datasets.
 
-### 8.3 LLM-Augmented Schema Interpretation Has Real Value
+### 9.3 LLM-Augmented Schema Interpretation Has Real Value
 
 The LLM schema interpreter added genuine value beyond what static rules could provide: it suggested the semantically meaningful name `LOCATED_IN_ZIP` rather than the literal `FK_postcode`, and identified that `zip_tract_crosswalk` should become a computed edge rather than an intermediate node. However, LLM suggestions required human review — the interpreter occasionally proposed nonsensical relationships. The hybrid approach (LLM suggestions + authoritative YAML) proved more robust than either alone.
 
-### 8.4 Streamlit State Management Requires Careful Design
+### 9.4 Streamlit State Management Requires Careful Design
 
 Streamlit's execution model (full script re-run on every interaction) creates subtle bugs when `value=` and `key=` parameters interact. The key lesson: always use `key=` for persistent widget state and write to `st.session_state[key]` directly to programmatically update widget content. The `value=` parameter only sets the initial value on first render.
 
-### 8.5 Documentation as a Product Deliverable
+### 9.5 Documentation as a Product Deliverable
 
 Early documentation drafts focused on code comments and API references. User testing (simulated by running the app with a fresh terminal and no memory of the implementation) revealed that the most critical documentation was the user guide — specifically the Cypher tips table explaining `rent_burden_rate > 0.35` vs `> 35` and the direction of `NEIGHBORS` edges. Documentation quality directly determines whether the KG is adopted or ignored.
 
 ---
 
-## 9. Conclusion and Future Work
+## 10. Conclusion and Future Work
 
-### 9.1 Conclusion
+### 10.1 Conclusion
 
 This project successfully designed and implemented an automated PostgreSQL-to-Neo4j conversion bot, validated through complete migration of the NOAH housing affordability database. All primary success criteria were met or exceeded:
 
@@ -366,7 +399,7 @@ This project successfully designed and implemented an automated PostgreSQL-to-Ne
 
 The project demonstrates that automated RDBMS-to-graph conversion is technically feasible using a combination of formal conversion frameworks (De Virgilio), LLM-assisted semantic enrichment, and config-driven ETL pipelines. The Text2Cypher interface — achieving near-human accuracy on representative queries — validates the promise of natural language interfaces for democratizing graph database access.
 
-### 9.2 Future Work
+### 10.2 Future Work
 
 **Phase 2: Owner/LLC Network Data**
 The ACRIS dataset (NYC property records: 85M rows across 3 tables, ~50GB) would add an owner-to-building relationship layer to the graph, enabling the multi-hop ownership chain queries described in the project briefing. This requires bulk import tooling (`neo4j-admin import`) rather than Python-mediated batch MERGE.
@@ -385,7 +418,7 @@ The mapping engine's YAML-driven configuration is database-agnostic. Extending t
 
 ---
 
-## 10. References
+## 11. References
 
 Angles, R., Arenas, M., Barceló, P., Hogan, A., Reutter, J., & Vrgoc, D. (2017). Foundations of modern query languages for graph databases. *ACM Computing Surveys, 50*(5), 1–40.
 
@@ -409,5 +442,5 @@ NYC Open Data. (2024). *Affordable Housing Production by Building* [Dataset]. NY
 
 ---
 
-*Word count: approximately 3,200 words (body sections 1–9, excluding tables)*
-*Document version: 1.0 · Submitted Spring 2026*
+*Word count: approximately 4,000 words (body sections 1–10, excluding tables)*
+*Document version: 1.1 · Submitted Spring 2026*

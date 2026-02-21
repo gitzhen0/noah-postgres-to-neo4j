@@ -8,10 +8,12 @@ This guide covers everything you need to use the NOAH Knowledge Graph web applic
 
 1. [Starting the Application](#starting-the-application)
 2. [Ask Page — Natural-Language Queries](#ask-page)
-3. [Explore Page — Cypher Editor](#explore-page)
-4. [Understanding the Graph Model](#understanding-the-graph-model)
-5. [Cypher Quick Reference](#cypher-quick-reference)
-6. [Troubleshooting](#troubleshooting)
+3. [Explore Page — Cypher Editor, Graph View & Saved Queries](#explore-page)
+4. [Templates Page — Parameterized Queries](#templates-page)
+5. [Exporting Results (CSV and GeoJSON)](#exporting-results)
+6. [Understanding the Graph Model](#understanding-the-graph-model)
+7. [Cypher Quick Reference](#cypher-quick-reference)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -92,12 +94,68 @@ The Explore page gives you direct access to the Cypher query editor.
 3. Click **Run ▶**
 4. Results appear below as a table with a **Download CSV** button
 
-### Schema Reference Tab
+### Tabs in Explore
 
-Click the **Schema Reference** tab for a full reference of:
-- All node labels and their properties
-- All relationship types, directions, and properties
-- Cypher tips and gotchas
+| Tab | What it does |
+|---|---|
+| **Query Editor** | Write and run any Cypher query; results in table + CSV/GeoJSON download |
+| **Graph View** | Visual network rendering of node-and-relationship queries (pyvis) |
+| **Saved Queries** | Load or delete your saved queries |
+| **Schema Reference** | Full reference of node labels, properties, relationship types, and Cypher tips |
+
+### Graph View
+
+Select a graph example (or write your own query that returns node and relationship variables, e.g. `RETURN p, r, z`), then click **Render Graph ▶**. Hover over nodes for property details, drag to rearrange, scroll to zoom.
+
+### Saved Queries
+
+In the **Query Editor** tab, give your query a name in the "Query name…" field and click **Save ★**. Saved queries appear in the **Saved Queries** tab and can be reloaded into the editor at any time.
+
+---
+
+## Templates Page
+
+The **Templates** page provides 5 parameterized query templates for non-Cypher users:
+
+| Template | Parameters |
+|---|---|
+| ① Rent Burden by Borough | Borough selectbox + rent burden threshold slider |
+| ② Neighbor Projects | ZIP code input + 1-hop / 2-hop radio |
+| ③ High-Burden Tracts | Borough + severe burden threshold slider |
+| ④ Borough Comparison | Indicator dropdown (rent burden / income / severe burden) |
+| ⑤ Top Projects | Borough + metric (total units, low-income units…) + Top N |
+
+All templates display results as a table with auto bar chart and CSV download.
+
+---
+
+## Exporting Results
+
+### CSV Export
+
+Available on the Ask and Explore pages after a query runs. Click **↓ CSV** to download all result rows.
+
+### GeoJSON Export
+
+Available when the query result contains `center_lat` and `center_lon` columns. Click **↓ GeoJSON** to download a GeoJSON FeatureCollection compatible with:
+- **QGIS** — open directly as a vector layer
+- **Mapbox / Leaflet** — load via `fetch()` + `addSource()`
+- **ArcGIS Online** — upload as a hosted feature layer
+
+**Queries that produce GeoJSON-compatible results:**
+
+```cypher
+-- ZIP centroids with rent burden
+MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+RETURN z.zip_code, z.center_lat, z.center_lon, z.borough,
+       a.rent_burden_rate, a.median_income_usd
+
+-- Housing project locations
+MATCH (p:HousingProject)
+WHERE p.center_lat IS NOT NULL
+RETURN p.project_name, p.borough, p.total_units,
+       p.center_lat, p.center_lon
+```
 
 ---
 
