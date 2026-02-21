@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from utils.theme import inject_theme
 from utils.connection import get_config, run_query
+from utils.explain import cypher_to_dot
 
 st.set_page_config(
     page_title="Ask — NYC Housing Graph",
@@ -79,7 +80,7 @@ if not api_key:
         unsafe_allow_html=True,
     )
     if st.button("Go to Settings →"):
-        st.switch_page("pages/4_Settings.py")
+        st.switch_page("pages/5_Settings.py")
     st.stop()
 
 # ── Example chips ─────────────────────────────────────────────────────
@@ -228,9 +229,15 @@ if result:
         else:
             st.info("No results found for this query.")
 
-        # ── Explanation ────────────────────────────────────────────────
-        if show_explain and result.get("explanation"):
-            st.markdown(
-                f'<div class="answer-box">{result["explanation"]}</div>',
-                unsafe_allow_html=True,
-            )
+        # ── Explain panel ──────────────────────────────────────────────
+        if show_explain and result.get("cypher"):
+            dot = cypher_to_dot(result["cypher"])
+            if dot or result.get("explanation"):
+                with st.expander("Explain — traversal path & summary", expanded=True):
+                    if dot:
+                        st.graphviz_chart(dot, use_container_width=False)
+                    if result.get("explanation"):
+                        st.markdown(
+                            f'<div class="answer-box">{result["explanation"]}</div>',
+                            unsafe_allow_html=True,
+                        )
