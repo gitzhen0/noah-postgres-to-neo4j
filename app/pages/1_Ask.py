@@ -93,23 +93,22 @@ EXAMPLES = [
 ]
 
 ex_cols = st.columns(len(EXAMPLES))
-for col, (label, question) in zip(ex_cols, EXAMPLES):
+for col, (label, q_text) in zip(ex_cols, EXAMPLES):
     with col:
         if st.button(label, use_container_width=True, key=f"chip_{label}"):
-            st.session_state["_pending"] = question
+            st.session_state["ask_question"] = q_text
+
+# Handle cross-page navigation (from Home quick search)
+if "pending_query" in st.session_state:
+    st.session_state["ask_question"] = st.session_state.pop("pending_query")
 
 # ── Query input ───────────────────────────────────────────────────────
-default_q = st.session_state.pop(
-    "_pending",
-    st.session_state.pop("pending_query", ""),
-)
-
 question = st.text_area(
     "question",
-    value=default_q,
     placeholder="e.g. Which neighborhoods have the most affordable housing?",
     height=88,
     label_visibility="collapsed",
+    key="ask_question",
 )
 
 btn_col, _, _ = st.columns([1, 1, 4])
