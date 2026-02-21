@@ -1,168 +1,149 @@
-# Questions for Prof / Yue Yu
+# Questions for Prof / Yue Yu — Updated v2
 
-## 中文摘要
-
-在本地完整还原 Yue 的 NOAH 数据库过程中，我们发现了若干需要确认的问题，主要分为四类：
-
-1. **数据可获取性**：StreetEasy 私有数据无法获取，目前 `noah_streeteasy_medianrent_2025_10` 为空表；租金相关分析（`rent_to_income_ratio`）全部为 NULL。需要 Yue 提供原始数据文件，或给出可接受的替代方案。
-
-2. **Schema 设计歧义**：`project_id` 在 Yue 的两个 SQL 文件中定义冲突（一个用 `UNIQUE`，一个用 `PRIMARY KEY`），但 Socrata 真实数据显示同一 project_id 对应多栋楼（8,604 条记录，只有 5,252 个唯一 ID）。我们选择了 serial `id` 作为主键，但需要确认这是否符合 Yue 的原始设计意图。
-
-3. **数据时效性**：Yue 的 StreetEasy 数据是 2025 年 10 月，我们的 Census ACS 数据是 2022 年，年份不对齐。请问 Yue 用的 Census 数据是哪一年？
-
-4. **项目范围与 Capstone 评分**：StreetEasy 数据缺失会影响对 NOAH 图谱"租金可负担性分析"的演示效果。教授是否接受"核心功能展示 + 数据缺口说明"的方式？还是必须要有完整的租金数据？
+*更新于 2026-02-20 · 项目已完成，本文档记录已解决问题的处理方式及尚需教授确认的问题*
 
 ---
 
-## Q1 — StreetEasy Data: Can We Get the Raw File?
+## 总览
 
-**Context:**
-`noah_streeteasy_medianrent_2025_10` is the core rent data table in NOAH. It contains median rent by ZIP code and bedroom type, collected manually by Yue from StreetEasy (October 2025). This table is referenced in `build_zip_level_tables.py` and feeds directly into `noah_affordability_analysis.median_rent_usd` and `rent_to_income_ratio`.
-
-**Current status:**
-The table exists in our local database but has 0 rows. Without it:
-- `noah_affordability_analysis.median_rent_usd` = NULL for all 177 ZIPs
-- `noah_affordability_analysis.rent_to_income_ratio` = NULL for all 177 ZIPs
-- The affordability analysis is effectively incomplete
-
-**Questions:**
-1. Yue, can you share the raw StreetEasy CSV/Excel file you used to populate `noah_streeteasy_medianrent_2025_10`? Even a snapshot would be sufficient.
-2. If the original file isn't available, what is the expected schema of this table? (Which bedroom types? What ZIP granularity? What time range?)
-3. Would a publicly available substitute be acceptable for the capstone? Candidates:
-   - **Zillow ZORI** (ZIP-level, free download): `https://www.zillow.com/research/data/`
-   - **ACS B25031** (Census median rent by bedrooms, tract-level, 2022): available via Census API but is 2022 data, not 2025 market rates
-   - **NYC DHCR data**: available through NYC Open Data but covers only rent-stabilized units
+| # | 问题 | 对象 | 状态 |
+|---|------|------|------|
+| Q1 | StreetEasy 数据缺失 | Yue | ✅ 已自行解决（用 ACS 租金负担率替代） |
+| Q2 | `project_id` 主键冲突 | Yue | ✅ 已自行解决（保留 8,604 条建筑级数据） |
+| Q3 | Census 数据年份对齐 | Yue | ✅ 已自行解决（统一使用 ACS 2022） |
+| Q4 | `zip_tract_crosswalk` 来源 | Yue | ✅ 已自行解决（Census 2020 关系文件） |
+| Q5 | `rent_burden` 几何数据 | Yue | ✅ 已自行解决（TIGER shapefile 空间关联） |
+| Q6 | `zip_shapes` 来源 | Yue | ✅ 已自行解决（NYC Open Data） |
+| Q7 | StreetEasy 缺失对评分的影响 | Prof | ❓ 待确认 |
+| Q8 | `buildings` 表是否存在 | Yue | ✅ 已自行解决（无独立表，按行映射） |
+| Q9 | Text2Cypher 评估方法论 | Prof | ❓ 待确认 |
+| Q10 | 最终答辩形式与演示要求 | Prof | ❓ 待确认 |
 
 ---
 
-## Q2 — `project_id` Uniqueness: Schema Conflict
+## 已解决问题（存档）
 
-**Context:**
-Yue's two SQL files define the primary key of `housing_projects` differently:
+### Q1 — StreetEasy 租金数据
 
-| File | Definition |
-|------|-----------|
-| `database_schema.sql` | `id SERIAL PRIMARY KEY` + `project_id VARCHAR(50) UNIQUE NOT NULL` |
-| `backend/migrations/001_create_housing_projects_table.sql` | `project_id VARCHAR(50) PRIMARY KEY` (no separate `id`) |
+**原问题：** `noah_streeteasy_medianrent_2025_10` 表为空，`median_rent_usd` 和 `rent_to_income_ratio` 全为 NULL。
 
-**The real data problem:**
-When loading all 8,604 rows from Socrata (`hg8x-zxpr`), we find:
-- Total rows: **8,604**
-- Unique `project_id` values: **5,252**
-- Rows sharing a `project_id`: **3,352** (e.g., project_id `75173` = 114 buildings, `53017` = 83 buildings)
+**解决方式：**
+放弃使用私有 StreetEasy 数据。改用 ACS B25070（Census 人口普查）提供的 `rent_burden_rate` 和 `severe_burden_rate` 作为核心可负担性指标。这两个字段已全部填充（177 个 ZIP 码均有数据）。
 
-This means Socrata's "Housing Production by Building" dataset uses project_id at the building level — **one housing project can have many buildings**.
+`median_rent_usd` 和 `rent_to_income_ratio` 字段在 `AffordabilityAnalysis` 节点中仍为 NULL，但在演示中未影响核心功能展示。
 
-**Our current decision:**
-We use `id SERIAL PRIMARY KEY` and do NOT enforce UNIQUE on `project_id`. This preserves all 8,604 building-level records.
-
-**Questions:**
-1. Which schema definition was the final intended one? (`database_schema.sql` or the migration file?)
-2. Was NOAH's production database actually storing only 5,252 de-duplicated records, or all 8,604?
-3. In Yue's Streamlit app, were queries written against `project_id` (one-per-project) or `id` (one-per-building)?
-4. If UNIQUE is required, should we de-duplicate by keeping the first occurrence, the most recent, or aggregating unit counts?
+**遗留问题（见 Q7）：** 教授是否认为这是可接受的数据缺口？
 
 ---
 
-## Q3 — Census Data Year Alignment
+### Q2 — `project_id` 主键冲突
 
-**Context:**
-The NOAH system combines two data sources with different time periods:
-- **StreetEasy rent data:** October 2025 (table name `noah_streeteasy_medianrent_2025_10`)
-- **Census ACS data (our load):** 2022 5-Year Estimates (most recent fully released as of early 2025)
+**原问题：** Yue 的两个 SQL 文件对主键定义不一致；Socrata 真实数据显示同一 project_id 对应多栋楼。
 
-**Potential misalignment:**
-- ACS 2022 median income vs. 2025 market rent — a 3-year gap during which NYC rents increased significantly (post-COVID rent surge)
-- The computed `rent_to_income_ratio` would be inflated by using 2022 incomes against 2025 rents
+**解决方式：**
+- 使用 `id SERIAL PRIMARY KEY`，不对 `project_id` 施加 UNIQUE 约束
+- 保留全部 8,604 条建筑级（per-building）记录
+- Neo4j 中每行映射为一个独立的 `HousingProject` 节点，使用 `db_id`（即 serial `id`）作为合并键
 
-**Questions:**
-1. Yue, which ACS year did you use? 2022? 2023?
-2. Was the mismatch between ACS and StreetEasy years intentional (using latest available for each), or an oversight?
-3. For the capstone, should we prioritize temporal consistency (use same year for both) or recency (latest available for each)?
-4. Is ACS 2023 data available and preferable? (2023 5-year estimates were released in December 2024)
+**数据说明：**
+- 总记录数：8,604
+- 唯一 project_id：5,252
+- 同一 project_id 对应多栋楼的情况：3,352 条
 
 ---
 
-## Q4 — `zip_tract_crosswalk`: HUD vs. Census Weights
+### Q3 — Census 数据年份
 
-**Context:**
-The crosswalk table maps ZIP codes to census tracts with a `tot_ratio` weight for area-weighted aggregation (ZIP_value = SUM(tract_value × tot_ratio)).
+**原问题：** StreetEasy 数据为 2025 年 10 月，Census ACS 数据年份不确定。
 
-**What we found:**
-- Yue's `build_zip_level_tables.py` uses `zip_tract_crosswalk` but doesn't document where this table's data comes from
-- The HUD ZIP-to-Tract crosswalk API (`https://www.huduser.gov/hudapi/public/usps`) returned HTTP 401 (unauthorized)
-- We used the **Census 2020 ZCTA-to-Tract relationship file** with `tot_ratio = AREALAND_PART / AREALAND_TRACT_20`
-
-**Our current crosswalk:**
-- 3,071 rows covering 177 NYC ZIPs
-- Average tot_ratio = 0.7464 (not 1.0 — many tracts are only partially in a ZIP)
-- Source: `tab20_zcta520_tract20_natl.txt` from Census Bureau
-
-**Questions:**
-1. What was the original source of `zip_tract_crosswalk` in NOAH's production database? Was it from HUD, Census, or another provider?
-2. Were HUD crosswalk weights used? If so, can you share the HUD API token or the pre-downloaded crosswalk file?
-3. Is area-based weighting (`AREALAND_PART / AREALAND_TRACT_20`) the correct approach, or did NOAH use population-weighted or housing-unit-weighted aggregation?
+**解决方式：**
+由于 StreetEasy 数据未使用，年份对齐问题自动消除。统一采用 **ACS 2022 五年估计数**（截至 2025 年初发布的最新完整数据集）。
 
 ---
 
-## Q5 — `rent_burden` Geometry: Was It Ever Populated?
+### Q4 — `zip_tract_crosswalk` 来源
 
-**Context:**
-`rent_burden` is a census-tract level table with a `geometry` column of type `GEOMETRY(POLYGON, 4326)`. When we loaded ACS B25070 data via the Census API, all 2,225 rows had NULL geometry — the Census API does not return geometries, only tabular data.
+**原问题：** HUD API 返回 401，无法获取 HUD 版本的跨表数据。
 
-**We fixed this** by downloading the Census TIGER `cb_2022_36_tract_500k.zip` shapefile and spatially joining it. All 2,225 rows now have geometry.
+**解决方式：**
+使用 Census Bureau 2020 ZCTA-to-Tract 关系文件（`tab20_zcta520_tract20_natl.txt`），以 `tot_ratio = AREALAND_PART / AREALAND_TRACT_20` 进行面积加权。
 
-**Questions:**
-1. Was the `geometry` column in NOAH's production `rent_burden` table ever populated? How?
-2. If it was populated, was it from TIGER shapefiles, or from another source (e.g., NYC DCP, Bytes of the Big Apple)?
-3. The TIGER shapefile we used (`cb_2022_36_tract_500k`) uses cartographic generalization (simplified polygons). Was this the level of precision used in NOAH's Streamlit map visualization?
+**当前 crosswalk 规模：** 3,071 行，覆盖纽约市 177 个 ZIP 码。
 
 ---
 
-## Q6 — `zip_shapes` Table Origin
+### Q5 — `rent_burden` 几何数据
 
-**Context:**
-Our `zip_shapes` table (177 NYC ZIPs) was loaded from NYC Open Data. Yue's repo contains `scripts/create_zip_shapes_nyc.sql` which references a table `zip_shapes_geojson` that doesn't exist in the public repo.
+**原问题：** Census API 不返回几何数据，所有行 `geometry` 为 NULL。
 
-**Questions:**
-1. Where did the original `zip_shapes` / `zip_shapes_geojson` data come from in NOAH? NYC DOF? NYC DOITT? ESRI? Census ZCTA shapefile?
-2. Was `zip_shapes_geojson` a separate raw import table, or is it the same as `zip_shapes` with a different schema?
-3. Are ZCTAs (Census ZIP Code Tabulation Areas) used, or actual USPS ZIP boundaries? They differ slightly.
+**解决方式：**
+下载 Census TIGER `cb_2022_36_tract_500k.zip` shapefile，与 `rent_burden` 表按 GEOID 做空间关联，完整填充了 2,225 行的几何字段（POLYGON, EPSG:4326）。
 
 ---
 
-## Q7 — Capstone Scope: Is Incomplete StreetEasy Data Acceptable?
+### Q6 — `zip_shapes` 来源
 
-**Context:**
-Our converter tool is designed to demonstrate automated PostgreSQL-to-Neo4j migration. The NOAH database is the source. However, the most analytically interesting part of NOAH — rent affordability analysis — depends on StreetEasy data we cannot obtain.
+**原问题：** Yue 的 `create_zip_shapes_nyc.sql` 引用了不存在于 public repo 的 `zip_shapes_geojson` 表。
 
-**Current state of our demo:**
-- ✅ Full housing_projects data (8,604 buildings with geometry)
-- ✅ Full ACS demographic/burden data (income, rent burden by tract)
-- ✅ Spatial relationships (ZIP neighborhoods, building clustering)
-- ✅ Text2Cypher natural language query interface
-- ⚠️ `rent_to_income_ratio` = NULL (no StreetEasy data)
-
-**Questions:**
-1. Prof: Is demonstrating the **conversion pipeline** (schema analysis → graph mapping → Cypher generation → migration) sufficient for full marks, even if the affordability analysis has NULL rent values?
-2. Prof: Should we use a publicly available rent substitute (Zillow ZORI) to make the demo more complete, or is that considered out of scope?
-3. Prof: Is the primary evaluation criterion the **tooling/automation quality** or the **analytical quality of the resulting knowledge graph**?
+**解决方式：**
+从 NYC Open Data（`nyc_community_districts` + ZCTA shapefile）获取 177 个纽约市 ZIP 边界多边形，导入 `zip_shapes` 表，SRID = 4326。
 
 ---
 
-## Q8 — Buildings Table: Is There a Separate `buildings` Table?
+### Q8 — `buildings` 独立表
 
-**Context:**
-Our current `mapping_rules.yaml` was designed to include a `Building` node in the Neo4j graph, sourced from a `buildings` table. However, Yue's schema files only show `housing_projects` — there is no separate `buildings` table in the public repo.
+**原问题：** `mapping_rules.yaml` 原来设计了一个独立的 `Building` 节点，但 Yue 的 repo 中没有 `buildings` 表。
 
-The `housing_projects` table contains building-level attributes (BBL, BIN, address) as well as project-level attributes (income unit counts, affordability status).
-
-**Questions:**
-1. Was there a separate `buildings` table in NOAH's production database that is not in the public GitHub repo?
-2. Should `housing_projects` be mapped as a single `HousingProject` node per row (building-level), or should we denormalize/aggregate to project-level?
-3. For the Neo4j graph, what would be the most useful node granularity: per-building or per-project?
+**解决方式：**
+确认 `housing_projects` 即为建筑级表（每行 = 一栋楼）。不再创建独立 `Building` 节点，改为直接将 `housing_projects` 的每行映射为 `HousingProject` 节点。
 
 ---
 
-*Document prepared: 2026-02-20*
-*Author: Zhen Yang (based on local NOAH database reconstruction)*
+## 待确认问题
+
+### Q7 — 教授：StreetEasy 数据缺失对评分的影响
+
+**背景：**
+项目演示中，`AffordabilityAnalysis` 节点的以下字段值为 NULL：
+- `median_rent_usd`
+- `rent_to_income_ratio`
+
+有数据的字段：
+- ✅ `rent_burden_rate`（租金负担率）
+- ✅ `severe_burden_rate`（严重负担率）
+- ✅ `median_income_usd`（中位收入）
+
+Text2Cypher 的 20 题基准测试中，所有涉及可负担性分析的题目均基于 `rent_burden_rate` 和 `severe_burden_rate`，不依赖缺失字段，准确率达 95%（19/20）。
+
+**请教授确认：**
+1. 核心转换工具链（Schema 分析 → 图映射 → Cypher 生成 → 迁移）是否是首要评估标准，而非数据集的完整性？
+2. `median_rent_usd` 字段为 NULL 是否需要在答辩时主动说明并解释来源限制？
+3. 是否接受以 Zillow ZORI 数据作为 StreetEasy 的公开替代数据填充？（改动约 1 天工作量）
+
+---
+
+### Q9 — 教授：Text2Cypher 评估方法论
+
+**背景：**
+我们设计了一套 20 题基准测试（Easy 6 题 / Medium 7 题 / Hard 7 题），每题按 4 个标准打分（语法正确、有结果、计数匹配、首行匹配），得分 95%（19/20）。
+
+唯一失败题：Q19（Hard）—— LLM 省略了 LIMIT 子句，返回 100 行而非预期的 20 行。
+
+**请教授确认：**
+1. 这套 4-标准评分方法是否符合您对 Text2Cypher 评估的预期？
+2. "Hard" 难度的定义（3 跳图遍历 + 空间邻居查询）是否合理？
+3. 95% 这个数字是否需要与 baseline（如 direct GPT-4 without schema context）对比才有说服力？
+
+---
+
+### Q10 — 教授：最终答辩形式与演示要求
+
+**请教授确认：**
+1. 答辩是 demo-based 还是 slides-based，还是两者结合？
+2. 是否需要现场演示 Streamlit UI？如需要，演示时 Neo4j 和 PostgreSQL 需要 live connection，请问是在本地运行还是需要部署到可公开访问的服务器？
+3. 是否需要提交 GitHub repo 链接或代码压缩包？
+4. `docs/CAPSTONE_REPORT.md`（~4,000 字）是否符合书面报告要求的格式？
+
+---
+
+*文档版本：v2.0 · 2026-02-20 · 作者：Zhen Yang*
