@@ -269,6 +269,10 @@ noah_postgres_to_neo4j/
 │   │   ├── schema_context.py     # Dynamic schema injection
 │   │   └── providers/            # LLM provider adapters
 │   └── utils/                    # Shared utilities
+├── tests/                        # Test suite
+│   ├── unit/                     # Unit tests
+│   ├── integration/              # Integration tests
+│   └── test_mapping_engine.py    # Mapping engine tests
 ├── scripts/                      # Standalone scripts
 │   ├── performance_comparison.py # PG vs Neo4j benchmark
 │   ├── benchmark_text2cypher.py  # 20-question accuracy test
@@ -283,6 +287,9 @@ noah_postgres_to_neo4j/
 │   └── mapping_rules.yaml        # Graph mapping rules
 ├── notebooks/                    # Educational Jupyter notebooks
 ├── docs/                         # Extended documentation
+├── resources/                    # Reference materials
+├── docker-compose.yml            # Docker deployment
+├── Dockerfile.streamlit          # Streamlit container image
 ├── main.py                       # CLI entry point
 └── requirements.txt
 ```
