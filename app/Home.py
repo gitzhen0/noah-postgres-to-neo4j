@@ -1,289 +1,175 @@
 """
-NOAH Knowledge Graph - Home Page
+NYC Housing Graph — Home / Dashboard
 """
-import streamlit as st
+
 import sys
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+import streamlit as st
 
-# Page config
+sys.path.insert(0, str(Path(__file__).parent))
+
+from utils.theme import inject_theme
+from utils.connection import get_db_stats
+
 st.set_page_config(
-    page_title="NOAH Knowledge Graph",
-    page_icon="🏠",
+    page_title="NYC Housing Graph",
+    page_icon="🏙",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
+inject_theme()
 
-# Custom CSS
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        color: #1E88E5;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.2rem;
-        text-align: center;
-        color: #666;
-        margin-bottom: 2rem;
-    }
-    .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-    }
-    .stat-number {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 0.5rem 0;
-    }
-    .stat-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
-    .feature-box {
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border-left: 4px solid #1E88E5;
-        margin: 1rem 0;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Header
-st.markdown('<div class="main-header">🏠 NOAH Knowledge Graph</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="sub-header">Naturally Occurring Affordable Housing - NYC Data Explorer</div>',
-    unsafe_allow_html=True
-)
-
-# Introduction
-st.markdown("---")
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.markdown("### 📖 What is NOAH?")
-    st.markdown("""
-    The **NOAH (Naturally Occurring Affordable Housing) Knowledge Graph** transforms NYC housing data
-    from a traditional relational database into a powerful graph database, enabling:
-
-    - 🔍 **Intuitive natural language queries** - Ask questions in plain English
-    - ⚡ **Fast relationship traversals** - Find neighbors, patterns, and connections instantly
-    - 📊 **Complex pattern matching** - Discover housing affordability trends
-    - 🎯 **Multi-hop queries** - Explore neighborhood networks easily
-    """)
-
-    st.markdown("### 🎯 Why Neo4j?")
-    st.markdown("""
-    Traditional SQL databases struggle with relationship-heavy queries. Neo4j excels at:
-    - **Multi-hop traversals** (neighbors of neighbors) - simple instead of complex JOINs
-    - **Pattern matching** - find complex housing patterns in one query
-    - **Graph algorithms** - shortest paths, community detection, centrality analysis
-    """)
-
-with col2:
-    st.markdown("### 🚀 Quick Start")
-
-    with st.container():
-        st.markdown('<div class="feature-box">', unsafe_allow_html=True)
-        st.markdown("**Step 1:** Set up your API key")
-        st.markdown("Go to ⚙️ Settings")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with st.container():
-        st.markdown('<div class="feature-box">', unsafe_allow_html=True)
-        st.markdown("**Step 2:** Try a query")
-        st.markdown("Go to 🔍 Query")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with st.container():
-        st.markdown('<div class="feature-box">', unsafe_allow_html=True)
-        st.markdown("**Step 3:** Explore!")
-        st.markdown("Ask questions in plain English")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# Statistics
-st.markdown("---")
-st.markdown("### 📊 Database Statistics")
-
-# Get stats from session state or use defaults
-if 'db_stats' not in st.session_state:
-    st.session_state.db_stats = {
-        'zipcodes': 16,
-        'buildings': 0,
-        'projects': 20,
-        'neighbors': 140,
-        'located_in': 20
-    }
-
-stats = st.session_state.db_stats
-
-col1, col2, col3, col4, col5 = st.columns(5)
-
-with col1:
-    st.markdown(f"""
-    <div class="stat-card">
-        <div class="stat-label">ZIP Codes</div>
-        <div class="stat-number">{stats['zipcodes']}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown(f"""
-    <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-        <div class="stat-label">Buildings</div>
-        <div class="stat-number">{stats['buildings']}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown(f"""
-    <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-        <div class="stat-label">Housing Projects</div>
-        <div class="stat-number">{stats['projects']}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col4:
-    st.markdown(f"""
-    <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-        <div class="stat-label">Neighbor Links</div>
-        <div class="stat-number">{stats['neighbors']}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col5:
-    st.markdown(f"""
-    <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-        <div class="stat-label">Location Links</div>
-        <div class="stat-number">{stats['located_in']}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Example Queries
-st.markdown("---")
-st.markdown("### 💡 Example Questions You Can Ask")
-
-example_col1, example_col2 = st.columns(2)
-
-with example_col1:
-    st.markdown("**🔍 Simple Queries:**")
-    st.code("Which ZIP codes are in Brooklyn?")
-    st.code("Show me all housing projects in Manhattan")
-    st.code("How many projects are in each borough?")
-
-    st.markdown("**🔗 Relationship Queries:**")
-    st.code("Which ZIP codes are neighbors of 10001?")
-    st.code("Find housing projects in ZIPs neighboring 11106")
-
-with example_col2:
-    st.markdown("**📍 Spatial Queries:**")
-    st.code("Find ZIP codes within 5km of 10001")
-    st.code("Which ZIPs are closest to 10002?")
-
-    st.markdown("**🎯 Complex Queries:**")
-    st.code("Find all ZIP codes within 2 hops of 10001")
-    st.code("Show housing projects in high rent burden neighborhoods")
-
-# Features
-st.markdown("---")
-st.markdown("### ✨ Key Features")
-
-feat_col1, feat_col2, feat_col3 = st.columns(3)
-
-with feat_col1:
-    st.markdown("#### 🗣️ Natural Language")
-    st.markdown("""
-    Ask questions in plain English. Our AI-powered Text2Cypher translator
-    converts your questions into optimized graph queries automatically.
-    """)
-
-with feat_col2:
-    st.markdown("#### 🧑‍💻 Expert Mode")
-    st.markdown("""
-    Write Cypher queries directly for full control. Includes syntax highlighting,
-    auto-completion, and example query library.
-    """)
-
-with feat_col3:
-    st.markdown("#### 📊 Rich Results")
-    st.markdown("""
-    View results as tables, charts, or interactive network visualizations.
-    Export data in multiple formats (CSV, JSON).
-    """)
-
-# Technology Stack
-st.markdown("---")
-st.markdown("### 🛠️ Technology Stack")
-
-tech_col1, tech_col2, tech_col3 = st.columns(3)
-
-with tech_col1:
-    st.markdown("**Database:**")
-    st.markdown("- 🗄️ Neo4j 5.15.0")
-    st.markdown("- 🐘 PostgreSQL + PostGIS")
-
-with tech_col2:
-    st.markdown("**AI/ML:**")
-    st.markdown("- 🤖 OpenAI GPT-4")
-    st.markdown("- 🧠 Anthropic Claude")
-    st.markdown("- 📝 Few-shot Learning")
-
-with tech_col3:
-    st.markdown("**Frontend:**")
-    st.markdown("- 🎨 Streamlit")
-    st.markdown("- 🐍 Python 3.11+")
-    st.markdown("- 🐳 Docker")
-
-# Footer
-st.markdown("---")
-footer_col1, footer_col2, footer_col3 = st.columns(3)
-
-with footer_col1:
-    st.markdown("**📚 Documentation**")
-    st.markdown("[User Guide](https://github.com)")
-    st.markdown("[API Reference](https://github.com)")
-
-with footer_col2:
-    st.markdown("**🔗 Links**")
-    st.markdown("[GitHub Repository](https://github.com)")
-    st.markdown("[Report Issues](https://github.com)")
-
-with footer_col3:
-    st.markdown("**👥 About**")
-    st.markdown("NYU Capstone Project 2026")
-    st.markdown("Digital Forge Lab")
-
-# Sidebar
+# ── Sidebar ──────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### 🎯 Navigation")
-    st.info("""
-    👈 Use the sidebar to navigate between pages:
-
-    - 🏠 **Home**: Overview and introduction
-    - 🔍 **Query**: Ask questions and run queries
-    - ⚙️ **Settings**: Configure API keys and connections
-    """)
-
+    st.markdown(
+        '<span class="sidebar-brand">NYC Housing <span>Graph</span></span>',
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
-    st.markdown("### 📊 Connection Status")
+    st.caption(
+        "A knowledge graph of NYC affordable housing data. "
+        "Query in natural language or write Cypher directly."
+    )
 
-    # Check if configured
-    if 'api_key' in st.session_state and st.session_state.get('api_key'):
-        st.success("✅ API Key configured")
-    else:
-        st.warning("⚠️ API Key not set")
-        st.markdown("[Go to Settings →](Settings)")
+# ── Header ───────────────────────────────────────────────────────────
+st.markdown(
+    """
+    <div class="page-header">
+      <div class="page-title">NYC Affordable Housing Graph</div>
+      <div class="page-sub">
+        Exploring naturally occurring affordable housing across New York City's five boroughs
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    if 'neo4j_connected' in st.session_state and st.session_state.get('neo4j_connected'):
-        st.success("✅ Neo4j connected")
-    else:
-        st.info("ℹ️ Neo4j not connected")
+# ── Live Stats ───────────────────────────────────────────────────────
+stats = get_db_stats()
+
+total_rels = sum(
+    stats.get(f"r_{r}", 0)
+    for r in [
+        "LOCATED_IN_ZIP",
+        "NEIGHBORS",
+        "IN_CENSUS_TRACT",
+        "CONTAINS_TRACT",
+        "HAS_AFFORDABILITY_DATA",
+    ]
+)
+
+stat_items = [
+    ("Housing Projects", stats.get("n_HousingProject", "—"), "buildings across 5 boroughs"),
+    ("ZIP Codes",        stats.get("n_ZipCode", "—"),         "NYC postal boundaries"),
+    ("Census Tracts",   stats.get("n_RentBurden", "—"),       "tract-level rent burden"),
+    ("Affordability",   stats.get("n_AffordabilityAnalysis", "—"), "ZIP income + rent data"),
+    ("Connections",     total_rels or "—",                    "graph relationships"),
+]
+
+cols = st.columns(5)
+for col, (label, value, hint) in zip(cols, stat_items):
+    with col:
+        display = f"{value:,}" if isinstance(value, int) else str(value)
+        st.markdown(
+            f"""
+            <div class="stat-card">
+              <div class="stat-val">{display}</div>
+              <div class="stat-lbl">{label}</div>
+              <div class="stat-hint">{hint}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
+# ── Quick Search ─────────────────────────────────────────────────────
+st.markdown("#### Search the housing data")
+
+EXAMPLES = [
+    "How many projects are in each borough?",
+    "Which ZIP codes in Brooklyn have the highest rent burden?",
+    "Find housing projects in ZIP codes neighboring 10001",
+    "Show census tracts with severe rent burden above 40%",
+    "Compare median income across Manhattan ZIP codes",
+]
+
+chip_cols = st.columns(len(EXAMPLES))
+for col, ex in zip(chip_cols, EXAMPLES):
+    with col:
+        if st.button(ex, use_container_width=True, key=f"home_chip_{ex[:15]}"):
+            st.session_state["pending_query"] = ex
+            st.switch_page("pages/1_Ask.py")
+
+st.markdown("")
+
+qcol, bcol = st.columns([5, 1])
+with qcol:
+    quick_q = st.text_input(
+        "question",
+        placeholder="e.g. Which neighborhoods have the most affordable housing units?",
+        label_visibility="collapsed",
+    )
+with bcol:
+    if st.button("Search →", type="primary", use_container_width=True) and quick_q.strip():
+        st.session_state["pending_query"] = quick_q.strip()
+        st.switch_page("pages/1_Ask.py")
+
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
+# ── About ─────────────────────────────────────────────────────────────
+left, right = st.columns([3, 2])
+
+with left:
+    st.markdown(
+        """
+        <div class="about-section">
+        <h4 style="margin-top:0">What is this?</h4>
+        <p>
+        This tool converts NYC's NOAH (Naturally Occurring Affordable Housing) database
+        from PostgreSQL into a <strong>Neo4j knowledge graph</strong>, enabling
+        relationship-centric queries that are cumbersome in traditional SQL.
+        </p>
+        <p>
+        Each housing project is linked to its ZIP code, census tract, and
+        affordability metrics. ZIP codes are connected to their geographic
+        neighbors via shared boundaries.
+        </p>
+        <p style="margin-bottom:0">
+        Ask questions in plain English on the <strong>Ask</strong> page,
+        explore pre-built charts on <strong>Insights</strong>, or write
+        Cypher queries directly on <strong>Explore</strong>.
+        </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+with right:
+    st.markdown("**Graph schema**")
+    st.markdown(
+        """
+        <div style="font-size:0.85rem;line-height:2.2">
+        <b style="color:#555;font-size:0.7rem;text-transform:uppercase;letter-spacing:.05em">Nodes</b><br>
+        <span class="schema-node">HousingProject</span>
+        <span class="schema-node">ZipCode</span>
+        <span class="schema-node">AffordabilityAnalysis</span>
+        <span class="schema-node">RentBurden</span>
+        <br><br>
+        <b style="color:#555;font-size:0.7rem;text-transform:uppercase;letter-spacing:.05em">Relationships</b><br>
+        <span class="schema-rel">LOCATED_IN_ZIP</span>
+        <span class="schema-rel">NEIGHBORS</span>
+        <span class="schema-rel">IN_CENSUS_TRACT</span>
+        <span class="schema-rel">CONTAINS_TRACT</span>
+        <span class="schema-rel">HAS_AFFORDABILITY_DATA</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown("")
+    st.markdown("**Data source**")
+    st.caption(
+        "NYC Department of Housing Preservation & Development (HPD). "
+        "PostGIS → Neo4j migration via automated schema interpreter."
+    )
