@@ -84,7 +84,7 @@ text2cypher:
   # LLM Provider
   provider: "anthropic"  # or "openai"
   # Model name
-  model: "claude-sonnet-4-5-20250929"
+  model: "claude-sonnet-4-6"
   # API key (or use environment variable ANTHROPIC_API_KEY)
   api_key: ${ANTHROPIC_API_KEY}
   # Temperature for generation

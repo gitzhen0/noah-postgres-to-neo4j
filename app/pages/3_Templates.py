@@ -194,8 +194,8 @@ LIMIT 100
             else:
                 cypher = """
 MATCH (z:ZipCode {zip_code: $zip_code})-[:NEIGHBORS*1..2]-(n:ZipCode)
-WHERE n.zip_code <> $zip_code
       <-[:LOCATED_IN_ZIP]-(p:HousingProject)
+WHERE n.zip_code <> $zip_code
 RETURN DISTINCT p.project_name AS project_name,
        p.borough               AS borough,
        p.total_units           AS total_units,

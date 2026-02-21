@@ -3,7 +3,7 @@
 
 **Applied Project Final Report**
 
-By [Your Name]
+By Zhen Yang
 Spring 2026
 
 *A paper submitted in partial fulfillment of the requirements for the degree of*

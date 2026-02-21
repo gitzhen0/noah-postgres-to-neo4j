@@ -381,4 +381,4 @@ python scripts/performance_comparison.py
 
 ---
 
-**Student:** [Your Name] · **Advisor:** Dr. Andres Fortino · **Program:** NYU SPS MASY · **Spring 2026**
+**Student:** Zhen Yang · **Advisor:** Dr. Andres Fortino · **Program:** NYU SPS MASY · **Spring 2026**
