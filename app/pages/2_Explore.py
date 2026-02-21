@@ -93,11 +93,14 @@ ORDER BY z.borough, z.zip_code""",
     with load_col:
         selected = st.selectbox("Load example:", list(EXAMPLES.keys()), label_visibility="collapsed")
     if st.button("Load →"):
-        st.session_state["_cypher"] = EXAMPLES[selected]
+        st.session_state["cypher_editor"] = EXAMPLES[selected]
+
+    # Seed default on first load
+    if "cypher_editor" not in st.session_state:
+        st.session_state["cypher_editor"] = EXAMPLES["Projects by borough"]
 
     cypher = st.text_area(
         "Cypher",
-        value=st.session_state.get("_cypher", EXAMPLES["Projects by borough"]),
         height=170,
         label_visibility="collapsed",
         key="cypher_editor",

@@ -171,10 +171,7 @@ if result:
         # ── Cypher ────────────────────────────────────────────────────
         if show_cypher and result.get("cypher"):
             with st.expander("Cypher query", expanded=False):
-                st.markdown(
-                    f'<div class="cypher-block">{result["cypher"]}</div>',
-                    unsafe_allow_html=True,
-                )
+                st.code(result["cypher"], language="cypher")
 
         # ── Table ─────────────────────────────────────────────────────
         if rows:
