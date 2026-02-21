@@ -9,7 +9,7 @@
 把纽约市保障性住房 PostgreSQL 数据库（NOAH）自动转换成 Neo4j 知识图谱，并提供一个自然语言查询的 Web 界面。
 
 **源数据库（PostgreSQL）：** Yue Yu 的 NOAH 实现，8,604 条住房项目记录
-**目标数据库（Neo4j）：** 9,138 个节点，~35,000 条关系边
+**目标数据库（Neo4j）：** 11,183 个节点，~16,900 条关系边
 
 ---
 
@@ -62,7 +62,7 @@ streamlit run app/Home.py --server.port 8505
 | HousingProject (Neo4j) | 8,604 | merge key: db_id |
 | ZipCode (Neo4j) | 177 | merge key: zip_code |
 | AffordabilityAnalysis (Neo4j) | 177 | merge key: zip_code |
-| RentBurden (Neo4j) | 180 | merge key: geo_id |
+| RentBurden (Neo4j) | 2,225 | merge key: geo_id |
 
 **已知数据缺口：**
 - `AffordabilityAnalysis.median_rent_usd` 和 `rent_to_income_ratio` 为 NULL（StreetEasy 私有数据无法获取，用 ACS 租金负担率替代）

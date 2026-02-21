@@ -11,8 +11,8 @@ An automated tool that converts the NOAH (Naturally Occurring Affordable Housing
 | Metric | Result |
 |---|---|
 | Housing projects migrated | **8,604** (100%, zero data loss) |
-| Graph nodes created | **9,138** across 4 labels |
-| Graph relationships created | **~35,000** across 5 types |
+| Graph nodes created | **11,183** across 4 labels |
+| Graph relationships created | **~16,900** across 5 types |
 | Text2Cypher accuracy | **95%** (19/20 benchmark questions) |
 | Code complexity reduction | **20% fewer lines** than equivalent SQL |
 | Neo4j faster than PostgreSQL | Query 4: **1.6×** (pre-computed IN_CENSUS_TRACT vs 3-table JOIN) |
@@ -114,7 +114,7 @@ python main.py audit           # Post-migration integrity audit
 | `HousingProject` | 8,604 | `db_id` | Affordable housing development |
 | `ZipCode` | 177 | `zip_code` | NYC ZIP/ZCTA geographic unit |
 | `AffordabilityAnalysis` | 177 | `zip_code` | ZIP-level rent burden + income |
-| `RentBurden` | 180 | `geo_id` | Census-tract-level rent burden |
+| `RentBurden` | 2,225 | `geo_id` | Census-tract-level rent burden |
 
 **Relationships (5 types)**
 
@@ -123,7 +123,7 @@ python main.py audit           # Post-migration integrity audit
 | `LOCATED_IN_ZIP` | HousingProject → ZipCode | — | FK: postcode → zip_code |
 | `HAS_AFFORDABILITY_DATA` | ZipCode → AffordabilityAnalysis | — | FK: zip_code → zip_code |
 | `IN_CENSUS_TRACT` | HousingProject → RentBurden | — | Computed: borough+census_tract → geo_id |
-| `NEIGHBORS` | ZipCode ↔ ZipCode | `shared_boundary_km`, `is_touching` | Spatial: ST_Touches |
+| `NEIGHBORS` | ZipCode ↔ ZipCode | `distance_km`, `is_adjacent` | Spatial: ST_Touches |
 | `CONTAINS_TRACT` | ZipCode → RentBurden | `overlap_area_km2`, `tract_coverage_ratio` | Spatial intersection |
 
 ---
