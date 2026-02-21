@@ -364,11 +364,11 @@ Stage 1: Creating constraints and indexes...  ✅
 Stage 2: Migrating HousingProject nodes (8604)...  [████████] 100%
 Stage 3: Migrating ZipCode nodes (177)...  [████████] 100%
 Stage 4: Migrating AffordabilityAnalysis nodes (177)...  [████████] 100%
-Stage 5: Migrating RentBurden nodes (180)...  [████████] 100%
+Stage 5: Migrating RentBurden nodes (2225)...  [████████] 100%
 Stage 6: Creating LOCATED_IN_ZIP relationships...  [████████] 100%
 Stage 7: Creating NEIGHBORS relationships (spatial)...  [████████] 100%
 ...
-Migration complete! 9138 nodes, 35000+ relationships created.
+Migration complete! 11183 nodes, 16900+ relationships created.
 ```
 
 ### 验证迁移结果
@@ -450,7 +450,7 @@ streamlit run app/Home.py --server.port 8505
 □ python main.py status 显示两个数据库都已连接
 □ python main.py audit 所有检查项通过
 □ http://localhost:8505 能打开 Streamlit 界面
-□ Home 页面显示"9,138 nodes"和"35,000+ relationships"
+□ Home 页面显示"11,183 nodes"和"~16,900 relationships"
 □ Templates 页面能正常运行查询并显示图表
 ```
 
@@ -632,8 +632,8 @@ Neo4j (localhost:7687)
         ├── HousingProject 节点  8,604 个
         ├── ZipCode 节点         177 个
         ├── AffordabilityAnalysis 节点  177 个
-        ├── RentBurden 节点      180 个
-        └── 关系边               ~35,000 条
+        ├── RentBurden 节点      2,225 个
+        └── 关系边               ~16,900 条
 
 Streamlit UI (localhost:8505)
   └── 5 个页面全部可用

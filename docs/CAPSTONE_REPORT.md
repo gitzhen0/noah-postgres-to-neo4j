@@ -145,13 +145,13 @@ The NOAH knowledge graph contains four node labels and five relationship types:
 | HousingProject nodes | 8,604 |
 | ZipCode nodes | 177 |
 | AffordabilityAnalysis nodes | 177 |
-| RentBurden nodes | 180 |
-| Total nodes | 9,138 |
-| LOCATED_IN_ZIP relationships | 8,439 |
+| RentBurden nodes | 2,225 |
+| Total nodes | 11,183 |
+| LOCATED_IN_ZIP relationships | 6,851 |
 | HAS_AFFORDABILITY_DATA relationships | 177 |
-| IN_CENSUS_TRACT relationships | 8,604 |
-| NEIGHBORS relationships | ~1,200 (undirected) |
-| CONTAINS_TRACT relationships | ~900 |
+| IN_CENSUS_TRACT relationships | 5,426 |
+| NEIGHBORS relationships | 392 (undirected) |
+| CONTAINS_TRACT relationships | 4,050 |
 
 The `IN_CENSUS_TRACT` relationship deserves particular note: this edge directly connects each `HousingProject` to its `RentBurden` node, materializing a computation that requires a three-table JOIN in SQL (`housing_projects → zip_tract_crosswalk → rent_burden`). This pre-computation is the key reason Neo4j outperforms PostgreSQL on census tract queries.
 
@@ -208,7 +208,7 @@ WHERE ST_Touches(a.geom::geometry, b.geom::geometry)
   AND a.zip_code < b.zip_code
 ```
 
-Results are loaded as `NEIGHBORS` edges with `shared_boundary_km` and `is_touching` properties. This one-time computation (~30 seconds) eliminates spatial join overhead from all subsequent neighbor queries.
+Results are loaded as `NEIGHBORS` edges with `distance_km` and `is_adjacent` properties. This one-time computation (~30 seconds) eliminates spatial join overhead from all subsequent neighbor queries.
 
 ### 5.4 Key Engineering Decisions
 
@@ -231,7 +231,7 @@ The post-migration audit confirmed:
 | HousingProject count: PG 8,604 vs Neo4j 8,604 | PASS |
 | ZipCode count: PG 177 vs Neo4j 177 | PASS |
 | AffordabilityAnalysis count: PG 177 vs Neo4j 177 | PASS |
-| RentBurden count: PG 180 vs Neo4j 180 | PASS |
+| RentBurden count: PG 2,225 vs Neo4j 2,225 | PASS |
 | LOCATED_IN_ZIP orphan check | PASS |
 | IN_CENSUS_TRACT orphan check | PASS |
 | Property coverage ≥ 95% | PASS |

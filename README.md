@@ -101,7 +101,7 @@ python main.py audit           # Post-migration integrity audit
  ┌─────────────┐                         ┌─────────────────┐
  │ PostgreSQL  │                         │     Neo4j       │
  │  (NOAH DB)  │                         │  Knowledge Graph│
- │  8,604 rows │                         │  9,138 nodes    │
+ │  8,604 rows │                         │  11,183 nodes   │
  └─────────────┘                         └─────────────────┘
 ```
 
