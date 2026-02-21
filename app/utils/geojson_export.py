@@ -9,24 +9,51 @@ import json
 from typing import Optional
 
 
+def _find_col(keys: list[str], candidates: list[str]) -> Optional[str]:
+    """Find the first key that matches any candidate substring (case-insensitive)."""
+    for k in keys:
+        k_lower = k.lower()
+        if any(c in k_lower for c in candidates):
+            return k
+    return None
+
+
 def rows_to_geojson(
     rows: list[dict],
-    lat_col: str = "center_lat",
-    lon_col: str = "center_lon",
+    lat_col: Optional[str] = None,
+    lon_col: Optional[str] = None,
     props_cols: Optional[list[str]] = None,
 ) -> Optional[str]:
     """
     Convert a list of result dicts to a GeoJSON FeatureCollection string.
 
+    Auto-detects latitude/longitude columns by name if lat_col/lon_col not given.
+    Accepts exact column names OR columns containing 'lat'/'lon' as substrings
+    (e.g. 'center_lat', 'z.center_lat', 'latitude').
+
     Args:
         rows: List of dicts from run_query()
-        lat_col: Column name containing latitude values
-        lon_col: Column name containing longitude values
+        lat_col: Column name containing latitude values (auto-detected if None)
+        lon_col: Column name containing longitude values (auto-detected if None)
         props_cols: Columns to include as GeoJSON properties (None = all other cols)
 
     Returns:
         GeoJSON FeatureCollection as a JSON string, or None if no valid rows found.
     """
+    if not rows:
+        return None
+
+    keys = list(rows[0].keys())
+
+    # Auto-detect lat/lon columns
+    if lat_col is None:
+        lat_col = _find_col(keys, ["center_lat", "latitude", "_lat", ".lat"])
+    if lon_col is None:
+        lon_col = _find_col(keys, ["center_lon", "center_lng", "longitude", "_lon", "_lng", ".lon"])
+
+    if lat_col is None or lon_col is None:
+        return None  # No coordinate columns found
+
     features = []
     for row in rows:
         lat = row.get(lat_col)
