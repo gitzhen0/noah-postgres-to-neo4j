@@ -455,10 +455,218 @@ def query(ctx, question, provider, model, no_execute, no_explain):
 
 
 @cli.command()
+@click.option(
+    "--mapping-rules",
+    default="config/mapping_rules.yaml",
+    type=click.Path(),
+    help="Path to mapping_rules.yaml",
+)
+@click.option(
+    "--sample-size",
+    default=20,
+    show_default=True,
+    help="Rows to sample per node label for data verification",
+)
+@click.option(
+    "--output",
+    default="outputs/audit_report.json",
+    type=click.Path(),
+    help="Path for the audit report JSON",
+)
+@click.option("--no-coverage", is_flag=True, help="Skip property coverage check (faster)")
+@click.pass_context
+def audit(ctx, mapping_rules, sample_size, output, no_coverage):
+    """Post-migration audit: count comparison, sample verification, coverage"""
+    import json
+    from noah_converter.data_auditor import MigrationAuditor
+    from noah_converter.mapping_engine.config import MappingConfigLoader
+
+    config = ctx.obj["config"]
+
+    rules_path = Path(mapping_rules)
+    if not rules_path.exists():
+        console.print(f"[red]✗[/red] Mapping rules not found: {rules_path}")
+        return
+
+    schema = MappingConfigLoader.load_graph_schema(str(rules_path))
+    console.print(
+        f"[green]✓[/green] Loaded schema: "
+        f"{len(schema.nodes)} node types, {len(schema.relationships)} relationship types"
+    )
+
+    pg_dsn = {
+        "host": config.source_db.host,
+        "port": config.source_db.port,
+        "dbname": config.source_db.database,
+        "user": config.source_db.user,
+        "password": config.source_db.password,
+    }
+    neo4j_uri = config.target_db.uri
+    neo4j_auth = (config.target_db.user, config.target_db.password)
+
+    console.print("\n[bold blue]Running Post-Migration Audit...[/bold blue]\n")
+
+    auditor = MigrationAuditor(
+        pg_dsn=pg_dsn,
+        neo4j_uri=neo4j_uri,
+        neo4j_auth=neo4j_auth,
+        schema=schema,
+        sample_size=sample_size,
+    )
+
+    try:
+        with console.status("[cyan]Auditing...[/cyan]"):
+            report = auditor.run_audit(mapping_source=str(rules_path))
+    finally:
+        auditor.close()
+
+    _display_audit_report(report, show_coverage=not no_coverage)
+
+    # Save JSON report
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(report.to_dict(), indent=2, default=str))
+    console.print(f"\n[dim]Full report saved: {output_path}[/dim]")
+
+
+def _display_audit_report(report, show_coverage: bool = True):
+    """Render the audit report as Rich tables in the terminal."""
+    from rich.panel import Panel
+
+    # ── Node count table ──────────────────────────────────────────────
+    node_table = RichTable(title="Node Count Verification", show_header=True, header_style="bold")
+    node_table.add_column("Label", style="cyan")
+    node_table.add_column("Source Table", style="dim")
+    node_table.add_column("PostgreSQL", justify="right")
+    node_table.add_column("Neo4j", justify="right")
+    node_table.add_column("Diff", justify="right")
+    node_table.add_column("Status")
+
+    for nc in report.node_counts:
+        if nc.match:
+            status = "[green]✓ MATCH[/green]"
+            diff_str = "—"
+        else:
+            status = "[red]✗ MISMATCH[/red]"
+            diff_str = f"[red]{nc.diff:+,}[/red]"
+        node_table.add_row(
+            nc.label,
+            nc.source_table,
+            f"{nc.pg_count:,}",
+            f"{nc.neo4j_count:,}",
+            diff_str,
+            status,
+        )
+    console.print(node_table)
+    console.print()
+
+    # ── Relationship count table ──────────────────────────────────────
+    rel_table = RichTable(title="Relationship Counts", show_header=True, header_style="bold")
+    rel_table.add_column("Type", style="cyan")
+    rel_table.add_column("Source", style="dim")
+    rel_table.add_column("Neo4j", justify="right")
+    rel_table.add_column("PG Expected", justify="right")
+    rel_table.add_column("Status")
+
+    for rc in report.rel_counts:
+        if rc.neo4j_count == 0:
+            status = "[red]✗ EMPTY[/red]"
+        elif not rc.match:
+            status = "[yellow]⚠ MISMATCH[/yellow]"
+        else:
+            status = "[green]✓[/green]"
+        rel_table.add_row(
+            rc.rel_type,
+            rc.source_type,
+            f"{rc.neo4j_count:,}",
+            f"{rc.pg_expected:,}" if rc.pg_expected is not None else "N/A",
+            status,
+        )
+    console.print(rel_table)
+    console.print()
+
+    # ── Sample check table ────────────────────────────────────────────
+    if report.sample_checks:
+        sample_table = RichTable(title="Data Sample Verification", show_header=True, header_style="bold")
+        sample_table.add_column("Label", style="cyan")
+        sample_table.add_column("Checked", justify="right")
+        sample_table.add_column("Matched", justify="right")
+        sample_table.add_column("Match Rate", justify="right")
+        sample_table.add_column("Missing in PG", justify="right")
+        sample_table.add_column("Status")
+
+        for sc in report.sample_checks:
+            rate = sc.match_rate
+            if rate >= 95:
+                status = "[green]✓[/green]"
+                rate_str = f"[green]{rate:.1f}%[/green]"
+            elif rate >= 80:
+                status = "[yellow]⚠[/yellow]"
+                rate_str = f"[yellow]{rate:.1f}%[/yellow]"
+            else:
+                status = "[red]✗[/red]"
+                rate_str = f"[red]{rate:.1f}%[/red]"
+            sample_table.add_row(
+                sc.label,
+                str(sc.checked),
+                str(sc.matched),
+                rate_str,
+                str(sc.missing_in_neo4j),
+                status,
+            )
+        console.print(sample_table)
+
+        # Show mismatch details if any
+        all_mismatches = [
+            (sc.label, m)
+            for sc in report.sample_checks
+            for m in sc.mismatches
+        ]
+        if all_mismatches:
+            console.print("\n[bold yellow]Sample Mismatches (up to 10):[/bold yellow]")
+            for label, m in all_mismatches[:10]:
+                console.print(
+                    f"  [dim]{label}[/dim] key={m.merge_key_value} "
+                    f"[cyan]{m.property_name}[/cyan]: "
+                    f"Neo4j=[yellow]{m.neo4j_value!r}[/yellow] "
+                    f"PG=[blue]{m.pg_value!r}[/blue]"
+                )
+        console.print()
+
+    # ── Property coverage (optional) ──────────────────────────────────
+    if show_coverage and report.property_coverage:
+        for cov in report.property_coverage:
+            low_coverage = [
+                p for p in cov.properties if p.coverage_pct < 50
+            ]
+            if low_coverage:
+                console.print(f"[dim]{cov.label}[/dim] — low-coverage properties:")
+                for p in low_coverage:
+                    console.print(
+                        f"  [yellow]{p.property_name}[/yellow]: "
+                        f"{p.coverage_pct:.0f}% ({p.populated:,}/{p.total_nodes:,})"
+                    )
+        console.print()
+
+    # ── Issues + overall status ───────────────────────────────────────
+    if report.issues:
+        console.print("[bold yellow]Issues Found:[/bold yellow]")
+        for issue in report.issues:
+            prefix = "[red]✗[/red]" if issue.startswith("ERROR") else "[yellow]⚠[/yellow]"
+            console.print(f"  {prefix} {issue}")
+        console.print()
+
+    color = {"PASS": "green", "WARN": "yellow", "FAIL": "red"}[report.overall_status]
+    console.print(
+        f"[bold {color}]Overall Status: {report.overall_status}[/bold {color}]"
+    )
+
+
+@cli.command()
 @click.pass_context
 def validate(ctx):
     """Validate migrated data"""
-    console.print("[bold yellow]Validation not yet implemented[/bold yellow]")
+    console.print("[bold yellow]Use 'audit' command for data validation[/bold yellow]")
 
 
 @cli.command()
