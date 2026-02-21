@@ -21,15 +21,31 @@ html, body, [class*="css"] {
 [data-testid="stSidebar"] p,
 [data-testid="stSidebar"] li,
 [data-testid="stSidebar"] label,
-[data-testid="stSidebar"] .stMarkdown { color: #BEBEBE !important; }
+[data-testid="stSidebar"] .stMarkdown { color: #D0D0D0 !important; }
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 { color: #FFFFFF !important; }
-[data-testid="stSidebarNav"] a { color: #BEBEBE !important; font-size: 0.875rem; }
-[data-testid="stSidebarNav"] a:hover,
-[data-testid="stSidebarNav"] [aria-selected="true"] {
+[data-testid="stSidebarNavLink"] {
+    color: #E8E8E8 !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+}
+[data-testid="stSidebarNavLink"] span {
+    color: #E8E8E8 !important;
+}
+[data-testid="stSidebarNavLink"]:hover span {
+    color: #FFFFFF !important;
+}
+[data-testid="stSidebarNavLink"]:hover {
+    background: rgba(255,255,255,0.08) !important;
+    border-radius: 6px;
+}
+[data-testid="stSidebarNavLink"][aria-current="page"] span {
     color: #F4A261 !important;
-    background: rgba(244,162,97,0.08) !important;
+    font-weight: 600 !important;
+}
+[data-testid="stSidebarNavLink"][aria-current="page"] {
+    background: rgba(244,162,97,0.12) !important;
     border-radius: 6px;
 }
 
