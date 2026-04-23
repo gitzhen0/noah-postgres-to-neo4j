@@ -171,6 +171,23 @@ def add_figure_caption(doc, caption, *, chapter):
     set_font(r2, size=Pt(10), italic=True, color=INK)
 
 
+def add_figure(doc, image_path, caption, *, chapter, width_in=5.5):
+    """Centered image + numbered caption below it."""
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(10)
+    p.paragraph_format.space_after = Pt(2)
+    run = p.add_run()
+    try:
+        run.add_picture(str(image_path), width=Inches(width_in))
+    except Exception as exc:
+        print(f"[warn] could not embed {image_path}: {exc}")
+        t = p.add_run(f"[missing figure: {image_path}]")
+        set_font(t, italic=True, color=MUTED)
+        return
+    add_figure_caption(doc, caption, chapter=chapter)
+
+
 def add_table_caption(doc, caption, *, chapter):
     TBL_COUNTER["num"] += 1
     label = f"Table {chapter}-{TBL_COUNTER['num']}: "
@@ -280,7 +297,9 @@ SOURCES = {
     "wbs":          SRC_DIR / "src_WBS.md",
     "risk":         SRC_DIR / "src_Risk_Management_Plan_Zhen_Yang.md",
     "trial":        SRC_DIR / "src_Technology_Trial_Plan_Zhen_Yang.md",
-    "status":       SRC_DIR / "src_StatusReport.md",
+    "status_feb":   SRC_DIR / "src_Status_Feb26.md",
+    "status_mar":   SRC_DIR / "src_Status_Mar25.md",
+    "status_apr":   SRC_DIR / "src_Status_Apr16.md",
     "bibliography": SRC_DIR / "src_Assignment7_PartA_AnnotatedBibliography_ZhenYang.md",
     "proposal":     SRC_DIR / "src_Final_Project_Proposal_Finished_1.md",
 }
@@ -647,40 +666,37 @@ def section_abstract(doc):
     add_heading1(doc, "Abstract")
     # ~300 words, single-spaced per rubric
     abstract_text = (
-        "Organizations worldwide store critical operational data in relational "
-        "database management systems (RDBMS), yet relationship-heavy analytical "
-        "questions — which neighborhoods are within two hops of a transit hub, "
-        "which properties share an owner network — translate poorly into "
-        "multi-table SQL joins. Graph database management systems such as Neo4j "
-        "address this gap by storing relationships as first-class, traversable "
-        "objects, but migrating from RDBMS to graph remains a manual, "
-        "error-prone process requiring specialist expertise. This project "
-        "designed, implemented, and empirically validated an automated RDBMS-"
-        "to-Knowledge Graph Conversion Bot that ingests an arbitrary "
-        "PostgreSQL schema and produces a populated, integrity-checked Neo4j "
-        "knowledge graph, paired with a natural-language query interface. "
-        "The system implements three core modules grounded in published "
-        "research: a Schema Analyzer and LLM-augmented Interpreter following "
-        "De Virgilio's formal conversion rules; a batch Data Migrator with "
-        "idempotent MERGE semantics and post-migration auditing in the "
-        "Data2Neo style; and a Text2Cypher interface using schema-aware "
-        "prompting over a modern large language model. The proof of concept "
-        "was validated against the NOAH (Naturally Occurring Affordable "
-        "Housing) database — 8,604 NYC affordable housing projects with "
-        "PostGIS geometry, ZIP-level demographics, and census-tract rent-"
-        "burden rates. Full migration completed in under eight seconds with "
-        "zero data loss across 11,183 nodes and 17,072 relationships. The "
-        "Text2Cypher interface scored 95 percent on a 20-question benchmark, "
-        "substantially exceeding the 75 percent specification target. A ten-"
+        "Organizations store critical operational data in relational database "
+        "management systems (RDBMS), yet relationship-heavy analytical "
+        "questions translate poorly into multi-table SQL joins. Graph "
+        "databases such as Neo4j address this gap by storing relationships "
+        "as first-class objects, but migrating from RDBMS to graph remains a "
+        "manual, specialist-intensive process. This project designed, "
+        "implemented, and empirically validated an automated RDBMS-to-"
+        "Knowledge Graph Conversion Bot that ingests an arbitrary PostgreSQL "
+        "schema and produces a populated, integrity-checked Neo4j knowledge "
+        "graph, paired with a natural-language query interface. The system "
+        "implements three modules grounded in published research: a Schema "
+        "Analyzer and LLM-augmented Interpreter following De Virgilio's "
+        "formal rules; a batch Data Migrator with idempotent MERGE and "
+        "post-migration audit in the Data2Neo style; and a Text2Cypher "
+        "interface using schema-aware prompting over a modern LLM. "
+        "The proof of concept was validated against the NOAH (Naturally "
+        "Occurring Affordable Housing) database — 8,604 NYC housing projects "
+        "with PostGIS geometry, ZIP-level demographics, and census-tract "
+        "rent-burden rates. Full migration completed in under eight seconds "
+        "with zero data loss across 11,183 nodes and 17,072 relationships. "
+        "The Text2Cypher interface scored 95 percent on a 20-question "
+        "benchmark, substantially exceeding the 75 percent target. A ten-"
         "query performance study found Neo4j 37 times faster than PostgreSQL "
-        "on variable-length traversal queries while ceding bulk-aggregation "
-        "categories to PostgreSQL — evidence that graph databases are a "
-        "right-tool-for-query-shape instrument rather than a blanket "
-        "replacement. Generalization was demonstrated by migrating three "
-        "unrelated public databases (Chinook, Northwind, Pagila) through the "
-        "same engine with only per-dataset YAML mapping files. All "
-        "artifacts — code, Streamlit dashboard, educational Jupyter "
-        "notebook, benchmark reports — are released as open source."
+        "on variable-length traversal while ceding bulk-aggregation to "
+        "PostgreSQL — evidence that graph databases are a right-tool-for-"
+        "query-shape instrument rather than a blanket replacement. "
+        "Generalization was demonstrated by migrating three unrelated public "
+        "databases (Chinook, Northwind, Pagila) through the same engine with "
+        "only per-dataset YAML mapping files, each in under four seconds "
+        "with zero orphan foreign keys. All artifacts are released as open "
+        "source."
     )
     add_p(doc, abstract_text, line_spacing=1.0, space_after=Pt(12))
     add_mixed(doc, [
@@ -1359,6 +1375,20 @@ def section_methodology(doc):
         "The full FRS listing, including measurable acceptance criteria "
         "for each requirement, is provided in Appendix C.")
 
+    add_figure(doc,
+               REPO / "assets" / "figures" / "fig_architecture-05.png",
+               "System architecture — five components driven by one YAML "
+               "configuration file. All components except the Data Migrator "
+               "are stateless; none contains NOAH-specific logic.",
+               chapter=5, width_in=6.0)
+
+    add_figure(doc,
+               REPO / "assets" / "figures" / "fig_schema-06.png",
+               "Target NOAH graph model — five node labels (HousingProject, "
+               "ZipCode, Demographic, AffordabilityAnalysis, RentBurden) and "
+               "six relationship types. ZipCode sits at the hub.",
+               chapter=5, width_in=6.0)
+
     add_heading2(doc, "Technology Trial Plan")
     add_p(doc,
         "The technology trial was designed as an A/B comparison using "
@@ -1594,6 +1624,20 @@ def section_results(doc):
         ],
         col_widths=[Inches(2.3), Inches(0.8), Inches(1.1), Inches(1.2), Inches(1.6)])
     add_table_caption(doc, "Performance benchmark: median ms, 10 warm runs.", chapter=6)
+
+    add_figure(doc,
+               REPO / "assets" / "figures" / "fig_perf_category-12.png",
+               "Performance by query category — median execution time in "
+               "milliseconds (PostgreSQL vs Neo4j) across five categories, "
+               "ten warm runs each.",
+               chapter=6, width_in=6.0)
+
+    add_figure(doc,
+               REPO / "assets" / "figures" / "fig_hero-13.png",
+               "The hero query — \"All ZIPs within 2 hops of 10001\" runs "
+               "37.7 times faster in Neo4j (4.6 ms) than PostgreSQL's "
+               "recursive CTE (174.4 ms).",
+               chapter=6, width_in=6.0)
 
     add_heading2(doc, "Summary Statistics")
     add_p(doc,
@@ -2258,7 +2302,28 @@ def appendix_C(doc):
 
 def appendix_D(doc):
     appendix_header(doc, "Appendix D — Project Plan and Work Breakdown Structure")
-    render_markdown(doc, load_markdown(SOURCES["wbs"]))
+    add_p(doc,
+        "This appendix reproduces the Work Breakdown Structure (WBS) "
+        "submitted on April 6, 2026 as Assignment 8B. The WBS spans the "
+        "twelve-week project timeline (February 2 — April 30, 2026), "
+        "decomposes the work into six phases and 340 estimated hours, and "
+        "annotates each phase with its completion status as of the "
+        "submission date. The original document is reproduced verbatim "
+        "below, rendered as page images to preserve the table structure "
+        "exactly as submitted to the sponsor.", space_after=Pt(12))
+    fig_dir = REPO / "assets" / "figures"
+    wbs_pages = sorted(fig_dir.glob("wbs-*.png"))
+    for page_img in wbs_pages:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(4)
+        p.paragraph_format.space_after = Pt(4)
+        run = p.add_run()
+        try:
+            run.add_picture(str(page_img), width=Inches(6.3))
+        except Exception as exc:
+            t = p.add_run(f"[missing WBS page: {page_img}]")
+            set_font(t, italic=True, color=MUTED)
 
 
 def appendix_E(doc):
@@ -2275,17 +2340,37 @@ def appendix_G(doc):
     appendix_header(doc, "Appendix G — Status Reports")
     add_p(doc,
         "Three formal status reports were submitted to the Sponsor over "
-        "the project duration: the initial post-delivery report on "
-        "February 26, 2026; the mid-semester report on March 25, 2026; "
-        "and the final pre-closure report on April 16, 2026. Each "
-        "report uses the standard Red / Yellow / Green severity "
-        "indicators across six project areas (Overall Status, Schedule, "
-        "Deliverables, Resources and Collaboration, Changes, and "
-        "Communication). All six areas were Green on every report. The "
-        "consolidated content below is drawn from the final April 16, "
-        "2026 status report, which supersedes and subsumes the earlier "
-        "two.")
-    render_markdown(doc, load_markdown(SOURCES["status"]))
+        "the project duration, each using the standard Red / Yellow / "
+        "Green severity indicators across six project areas (Overall "
+        "Status, Schedule, Deliverables, Resources and Collaboration, "
+        "Changes, Communication). All six areas were Green on every "
+        "report. All three reports are reproduced in chronological order "
+        "below. Space is reserved at the end of each report for the "
+        "sponsor's signature.", space_after=Pt(18))
+
+    # Status Report 1 — February 26, 2026
+    add_heading2(doc, "Status Report 1 — February 26, 2026")
+    render_markdown(doc, load_markdown(SOURCES["status_feb"]))
+    add_p(doc, "", space_after=Pt(18))
+    add_p(doc, "Sponsor Signature: ____________________________________   Date: _______________",
+          space_after=Pt(6))
+    add_p(doc, "Printed Name: Dr. Andres Fortino", space_after=Pt(24))
+
+    # Status Report 2 — March 25, 2026
+    add_heading2(doc, "Status Report 2 — March 25, 2026")
+    render_markdown(doc, load_markdown(SOURCES["status_mar"]))
+    add_p(doc, "", space_after=Pt(18))
+    add_p(doc, "Sponsor Signature: ____________________________________   Date: _______________",
+          space_after=Pt(6))
+    add_p(doc, "Printed Name: Dr. Andres Fortino", space_after=Pt(24))
+
+    # Status Report 3 — April 16, 2026
+    add_heading2(doc, "Status Report 3 — April 16, 2026")
+    render_markdown(doc, load_markdown(SOURCES["status_apr"]))
+    add_p(doc, "", space_after=Pt(18))
+    add_p(doc, "Sponsor Signature: ____________________________________   Date: _______________",
+          space_after=Pt(6))
+    add_p(doc, "Printed Name: Dr. Andres Fortino")
 
 
 def appendix_H(doc):
