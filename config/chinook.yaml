@@ -1,0 +1,70 @@
+# Chinook config — agnostic demo (music store)
+# Source: github.com/lerocha/chinook-database
+source_db:
+  type: postgresql
+  host: 127.0.0.1
+  port: 15432
+  database: chinook
+  user: postgres
+  password: password123
+  schema: public
+
+target_db:
+  type: neo4j
+  uri: bolt://localhost:7688
+  user: neo4j
+  password: password123
+  database: neo4j
+
+schema_analyzer:
+  detect_join_tables: true
+  fk_depth: 3
+  analyze_geometry: false
+  exclude_tables: []
+
+mapping:
+  rules:
+    entity_tables: []
+    junction_tables: []
+  node_label_format: "PascalCase"
+  relationship_type_format: "SCREAMING_SNAKE_CASE"
+  property_format: "snake_case"
+
+migration:
+  batch_size: 1000
+  parallel: true
+  workers: 4
+  skip_validation: false
+  create_indexes: true
+  null_handling: "skip"
+
+validation:
+  validate_counts: true
+  validate_relationships: true
+  sample_percentage: 10
+  generate_report: true
+
+text2cypher:
+  provider: "anthropic"
+  model: "claude-sonnet-4-5-20250929"
+  api_key: ${ANTHROPIC_API_KEY}
+  temperature: 0.0
+  max_tokens: 2000
+  schema_aware: true
+
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/chinook_converter.log
+  console: true
+
+output:
+  cypher_dir: outputs/chinook/cypher
+  reports_dir: outputs/chinook/reports
+  validation_dir: outputs/chinook/validation
+  export_format: "json"
+
+performance:
+  cache_queries: true
+  pool_size: 10
+  timeout: 300

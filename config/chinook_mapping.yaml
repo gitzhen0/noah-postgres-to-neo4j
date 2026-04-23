@@ -1,0 +1,224 @@
+# Chinook mapping (music store demo — 11 tables, ~13k rows)
+# Showcases: self-join (Employee.reports_to), junction (playlist_track), classic FK chains
+
+metadata:
+  version: "1.0"
+  database: "chinook"
+  description: "Chinook music-store knowledge graph"
+  author: "NOAH Converter"
+
+spatial:
+  preserve_wkt: false
+  preserve_geojson: false
+  compute_centroids: false
+  compute_metrics: false
+  compute_bbox: false
+  use_neo4j_point: false
+  neighbors_threshold_km: 5.0
+
+nodes:
+
+  - label: Artist
+    source_table: artist
+    primary_property: artist_id
+    merge_keys: [artist_id]
+    indexes: [name]
+    properties:
+      - {name: artist_id, type: integer,  nullable: false, source_column: artist_id, source_type: integer}
+      - {name: name,      type: string,   nullable: true,  source_column: name,      source_type: varchar}
+
+  - label: Album
+    source_table: album
+    primary_property: album_id
+    merge_keys: [album_id]
+    indexes: [title]
+    properties:
+      - {name: album_id, type: integer, nullable: false, source_column: album_id, source_type: integer}
+      - {name: title,    type: string,  nullable: false, source_column: title,    source_type: varchar}
+
+  - label: Track
+    source_table: track
+    primary_property: track_id
+    merge_keys: [track_id]
+    indexes: [name]
+    properties:
+      - {name: track_id,     type: integer, nullable: false, source_column: track_id,     source_type: integer}
+      - {name: name,         type: string,  nullable: false, source_column: name,         source_type: varchar}
+      - {name: composer,     type: string,  nullable: true,  source_column: composer,     source_type: varchar}
+      - {name: milliseconds, type: integer, nullable: false, source_column: milliseconds, source_type: integer}
+      - {name: bytes,        type: integer, nullable: true,  source_column: bytes,        source_type: integer}
+      - {name: unit_price,   type: float,   nullable: false, source_column: unit_price,   source_type: numeric}
+
+  - label: Genre
+    source_table: genre
+    primary_property: genre_id
+    merge_keys: [genre_id]
+    indexes: [name]
+    properties:
+      - {name: genre_id, type: integer, nullable: false, source_column: genre_id, source_type: integer}
+      - {name: name,     type: string,  nullable: true,  source_column: name,     source_type: varchar}
+
+  - label: MediaType
+    source_table: media_type
+    primary_property: media_type_id
+    merge_keys: [media_type_id]
+    properties:
+      - {name: media_type_id, type: integer, nullable: false, source_column: media_type_id, source_type: integer}
+      - {name: name,          type: string,  nullable: true,  source_column: name,          source_type: varchar}
+
+  - label: Playlist
+    source_table: playlist
+    primary_property: playlist_id
+    merge_keys: [playlist_id]
+    indexes: [name]
+    properties:
+      - {name: playlist_id, type: integer, nullable: false, source_column: playlist_id, source_type: integer}
+      - {name: name,        type: string,  nullable: true,  source_column: name,        source_type: varchar}
+
+  - label: Customer
+    source_table: customer
+    primary_property: customer_id
+    merge_keys: [customer_id]
+    indexes: [email, country]
+    properties:
+      - {name: customer_id, type: integer, nullable: false, source_column: customer_id, source_type: integer}
+      - {name: first_name,  type: string,  nullable: false, source_column: first_name,  source_type: varchar}
+      - {name: last_name,   type: string,  nullable: false, source_column: last_name,   source_type: varchar}
+      - {name: email,       type: string,  nullable: false, source_column: email,       source_type: varchar}
+      - {name: country,     type: string,  nullable: true,  source_column: country,     source_type: varchar}
+      - {name: company,     type: string,  nullable: true,  source_column: company,     source_type: varchar}
+
+  - label: Employee
+    source_table: employee
+    primary_property: employee_id
+    merge_keys: [employee_id]
+    indexes: [title, country]
+    properties:
+      - {name: employee_id, type: integer, nullable: false, source_column: employee_id, source_type: integer}
+      - {name: first_name,  type: string,  nullable: false, source_column: first_name,  source_type: varchar}
+      - {name: last_name,   type: string,  nullable: false, source_column: last_name,   source_type: varchar}
+      - {name: title,       type: string,  nullable: true,  source_column: title,       source_type: varchar}
+      - {name: hire_date,   type: datetime, nullable: true, source_column: hire_date,   source_type: timestamp}
+      - {name: country,     type: string,  nullable: true,  source_column: country,     source_type: varchar}
+
+  - label: Invoice
+    source_table: invoice
+    primary_property: invoice_id
+    merge_keys: [invoice_id]
+    indexes: [invoice_date, billing_country]
+    properties:
+      - {name: invoice_id,      type: integer,  nullable: false, source_column: invoice_id,      source_type: integer}
+      - {name: invoice_date,    type: datetime, nullable: false, source_column: invoice_date,    source_type: timestamp}
+      - {name: billing_country, type: string,   nullable: true,  source_column: billing_country, source_type: varchar}
+      - {name: total,           type: float,    nullable: false, source_column: total,           source_type: numeric}
+
+  - label: InvoiceLine
+    source_table: invoice_line
+    primary_property: invoice_line_id
+    merge_keys: [invoice_line_id]
+    properties:
+      - {name: invoice_line_id, type: integer, nullable: false, source_column: invoice_line_id, source_type: integer}
+      - {name: unit_price,      type: float,   nullable: false, source_column: unit_price,      source_type: numeric}
+      - {name: quantity,        type: integer, nullable: false, source_column: quantity,        source_type: integer}
+
+relationships:
+
+  - type: RECORDED_BY
+    from_label: Album
+    to_label: Artist
+    source_type: foreign_key
+    source_table: album
+    from_id_column: album_id
+    to_id_column: artist_id
+    bidirectional: false
+    properties: []
+
+  - type: APPEARS_ON
+    from_label: Track
+    to_label: Album
+    source_type: foreign_key
+    source_table: track
+    from_id_column: track_id
+    to_id_column: album_id
+    bidirectional: false
+    properties: []
+
+  - type: IN_GENRE
+    from_label: Track
+    to_label: Genre
+    source_type: foreign_key
+    source_table: track
+    from_id_column: track_id
+    to_id_column: genre_id
+    bidirectional: false
+    properties: []
+
+  - type: ENCODED_AS
+    from_label: Track
+    to_label: MediaType
+    source_type: foreign_key
+    source_table: track
+    from_id_column: track_id
+    to_id_column: media_type_id
+    bidirectional: false
+    properties: []
+
+  - type: INCLUDES
+    from_label: Playlist
+    to_label: Track
+    source_type: foreign_key
+    source_table: playlist_track
+    from_id_column: playlist_id
+    to_id_column: track_id
+    bidirectional: false
+    properties: []
+
+  - type: SUPPORTED_BY
+    from_label: Customer
+    to_label: Employee
+    source_type: foreign_key
+    source_table: customer
+    from_id_column: customer_id
+    to_id_column: support_rep_id
+    bidirectional: false
+    properties: []
+
+  - type: REPORTS_TO
+    from_label: Employee
+    to_label: Employee
+    source_type: foreign_key
+    source_table: employee
+    from_id_column: employee_id
+    to_id_column: reports_to
+    bidirectional: false
+    properties: []
+
+  - type: PURCHASED_BY
+    from_label: Invoice
+    to_label: Customer
+    source_type: foreign_key
+    source_table: invoice
+    from_id_column: invoice_id
+    to_id_column: customer_id
+    bidirectional: false
+    properties: []
+
+  - type: PART_OF
+    from_label: InvoiceLine
+    to_label: Invoice
+    source_type: foreign_key
+    source_table: invoice_line
+    from_id_column: invoice_line_id
+    to_id_column: invoice_id
+    bidirectional: false
+    properties: []
+
+  - type: FOR_TRACK
+    from_label: InvoiceLine
+    to_label: Track
+    source_type: foreign_key
+    source_table: invoice_line
+    from_id_column: invoice_line_id
+    to_id_column: track_id
+    bidirectional: false
+    properties: []

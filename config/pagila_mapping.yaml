@@ -1,0 +1,290 @@
+# Pagila mapping (DVD rental demo — 12 domain tables, ~23k meaningful rows)
+# Showcases: two different junction tables (film_actor, film_category),
+# multi-layer geography (Address → City → Country), and temporal rental events.
+
+metadata:
+  version: "1.0"
+  database: "pagila"
+  description: "Pagila DVD-rental knowledge graph"
+  author: "NOAH Converter"
+
+spatial:
+  preserve_wkt: false
+  preserve_geojson: false
+  compute_centroids: false
+  compute_metrics: false
+  compute_bbox: false
+  use_neo4j_point: false
+  neighbors_threshold_km: 5.0
+
+nodes:
+
+  - label: Film
+    source_table: film
+    primary_property: film_id
+    merge_keys: [film_id]
+    indexes: [title, rating]
+    properties:
+      - {name: film_id,          type: integer, nullable: false, source_column: film_id,          source_type: integer}
+      - {name: title,            type: string,  nullable: false, source_column: title,            source_type: text}
+      - {name: description,      type: string,  nullable: true,  source_column: description,      source_type: text}
+      - {name: rental_duration,  type: integer, nullable: false, source_column: rental_duration,  source_type: smallint}
+      - {name: rental_rate,      type: float,   nullable: false, source_column: rental_rate,      source_type: numeric}
+      - {name: length,           type: integer, nullable: true,  source_column: length,           source_type: smallint}
+      - {name: replacement_cost, type: float,   nullable: false, source_column: replacement_cost, source_type: numeric}
+      - {name: rating,           type: string,  nullable: true,  source_column: rating,           source_type: varchar}
+
+  - label: Actor
+    source_table: actor
+    primary_property: actor_id
+    merge_keys: [actor_id]
+    indexes: [last_name]
+    properties:
+      - {name: actor_id,   type: integer, nullable: false, source_column: actor_id,   source_type: integer}
+      - {name: first_name, type: string,  nullable: false, source_column: first_name, source_type: text}
+      - {name: last_name,  type: string,  nullable: false, source_column: last_name,  source_type: text}
+
+  - label: Category
+    source_table: category
+    primary_property: category_id
+    merge_keys: [category_id]
+    indexes: [name]
+    properties:
+      - {name: category_id, type: integer, nullable: false, source_column: category_id, source_type: integer}
+      - {name: name,        type: string,  nullable: false, source_column: name,        source_type: text}
+
+  - label: Language
+    source_table: language
+    primary_property: language_id
+    merge_keys: [language_id]
+    properties:
+      - {name: language_id, type: integer, nullable: false, source_column: language_id, source_type: integer}
+      - {name: name,        type: string,  nullable: false, source_column: name,        source_type: varchar}
+
+  - label: Inventory
+    source_table: inventory
+    primary_property: inventory_id
+    merge_keys: [inventory_id]
+    properties:
+      - {name: inventory_id, type: integer, nullable: false, source_column: inventory_id, source_type: integer}
+
+  - label: Store
+    source_table: store
+    primary_property: store_id
+    merge_keys: [store_id]
+    properties:
+      - {name: store_id, type: integer, nullable: false, source_column: store_id, source_type: integer}
+
+  - label: Staff
+    source_table: staff
+    primary_property: staff_id
+    merge_keys: [staff_id]
+    indexes: [email]
+    properties:
+      - {name: staff_id,   type: integer, nullable: false, source_column: staff_id,   source_type: integer}
+      - {name: first_name, type: string,  nullable: false, source_column: first_name, source_type: text}
+      - {name: last_name,  type: string,  nullable: false, source_column: last_name,  source_type: text}
+      - {name: email,      type: string,  nullable: true,  source_column: email,      source_type: text}
+      - {name: active,     type: boolean, nullable: false, source_column: active,     source_type: boolean}
+
+  - label: Customer
+    source_table: customer
+    primary_property: customer_id
+    merge_keys: [customer_id]
+    indexes: [email, last_name]
+    properties:
+      - {name: customer_id, type: integer, nullable: false, source_column: customer_id, source_type: integer}
+      - {name: first_name,  type: string,  nullable: false, source_column: first_name,  source_type: text}
+      - {name: last_name,   type: string,  nullable: false, source_column: last_name,   source_type: text}
+      - {name: email,       type: string,  nullable: true,  source_column: email,       source_type: text}
+      - {name: create_date, type: date,    nullable: false, source_column: create_date, source_type: date}
+
+  - label: Address
+    source_table: address
+    primary_property: address_id
+    merge_keys: [address_id]
+    properties:
+      - {name: address_id,  type: integer, nullable: false, source_column: address_id,  source_type: integer}
+      - {name: address,     type: string,  nullable: false, source_column: address,     source_type: text}
+      - {name: district,    type: string,  nullable: false, source_column: district,    source_type: text}
+      - {name: postal_code, type: string,  nullable: true,  source_column: postal_code, source_type: text}
+
+  - label: City
+    source_table: city
+    primary_property: city_id
+    merge_keys: [city_id]
+    indexes: [city]
+    properties:
+      - {name: city_id, type: integer, nullable: false, source_column: city_id, source_type: integer}
+      - {name: city,    type: string,  nullable: false, source_column: city,    source_type: text}
+
+  - label: Country
+    source_table: country
+    primary_property: country_id
+    merge_keys: [country_id]
+    indexes: [country]
+    properties:
+      - {name: country_id, type: integer, nullable: false, source_column: country_id, source_type: integer}
+      - {name: country,    type: string,  nullable: false, source_column: country,    source_type: text}
+
+  - label: Rental
+    source_table: rental
+    primary_property: rental_id
+    merge_keys: [rental_id]
+    indexes: [rental_date]
+    properties:
+      - {name: rental_id,   type: integer,  nullable: false, source_column: rental_id,   source_type: integer}
+      - {name: rental_date, type: datetime, nullable: false, source_column: rental_date, source_type: timestamp}
+      - {name: return_date, type: datetime, nullable: true,  source_column: return_date, source_type: timestamp}
+
+relationships:
+
+  - type: IN_LANGUAGE
+    from_label: Film
+    to_label: Language
+    source_type: foreign_key
+    source_table: film
+    from_id_column: film_id
+    to_id_column: language_id
+    bidirectional: false
+    properties: []
+
+  - type: APPEARS_IN
+    from_label: Actor
+    to_label: Film
+    source_type: foreign_key
+    source_table: film_actor
+    from_id_column: actor_id
+    to_id_column: film_id
+    bidirectional: false
+    properties: []
+
+  - type: CATEGORIZED_AS
+    from_label: Film
+    to_label: Category
+    source_type: foreign_key
+    source_table: film_category
+    from_id_column: film_id
+    to_id_column: category_id
+    bidirectional: false
+    properties: []
+
+  - type: COPY_OF
+    from_label: Inventory
+    to_label: Film
+    source_type: foreign_key
+    source_table: inventory
+    from_id_column: inventory_id
+    to_id_column: film_id
+    bidirectional: false
+    properties: []
+
+  - type: AT_STORE
+    from_label: Inventory
+    to_label: Store
+    source_type: foreign_key
+    source_table: inventory
+    from_id_column: inventory_id
+    to_id_column: store_id
+    bidirectional: false
+    properties: []
+
+  - type: WORKS_AT
+    from_label: Staff
+    to_label: Store
+    source_type: foreign_key
+    source_table: staff
+    from_id_column: staff_id
+    to_id_column: store_id
+    bidirectional: false
+    properties: []
+
+  - type: STAFF_LIVES_AT
+    from_label: Staff
+    to_label: Address
+    source_type: foreign_key
+    source_table: staff
+    from_id_column: staff_id
+    to_id_column: address_id
+    bidirectional: false
+    properties: []
+
+  - type: MEMBER_OF
+    from_label: Customer
+    to_label: Store
+    source_type: foreign_key
+    source_table: customer
+    from_id_column: customer_id
+    to_id_column: store_id
+    bidirectional: false
+    properties: []
+
+  - type: CUSTOMER_LIVES_AT
+    from_label: Customer
+    to_label: Address
+    source_type: foreign_key
+    source_table: customer
+    from_id_column: customer_id
+    to_id_column: address_id
+    bidirectional: false
+    properties: []
+
+  - type: STORE_LOCATED_AT
+    from_label: Store
+    to_label: Address
+    source_type: foreign_key
+    source_table: store
+    from_id_column: store_id
+    to_id_column: address_id
+    bidirectional: false
+    properties: []
+
+  - type: IN_CITY
+    from_label: Address
+    to_label: City
+    source_type: foreign_key
+    source_table: address
+    from_id_column: address_id
+    to_id_column: city_id
+    bidirectional: false
+    properties: []
+
+  - type: IN_COUNTRY
+    from_label: City
+    to_label: Country
+    source_type: foreign_key
+    source_table: city
+    from_id_column: city_id
+    to_id_column: country_id
+    bidirectional: false
+    properties: []
+
+  - type: RENTAL_OF
+    from_label: Rental
+    to_label: Inventory
+    source_type: foreign_key
+    source_table: rental
+    from_id_column: rental_id
+    to_id_column: inventory_id
+    bidirectional: false
+    properties: []
+
+  - type: RENTED_BY
+    from_label: Rental
+    to_label: Customer
+    source_type: foreign_key
+    source_table: rental
+    from_id_column: rental_id
+    to_id_column: customer_id
+    bidirectional: false
+    properties: []
+
+  - type: HANDLED_BY
+    from_label: Rental
+    to_label: Staff
+    source_type: foreign_key
+    source_table: rental
+    from_id_column: rental_id
+    to_id_column: staff_id
+    bidirectional: false
+    properties: []

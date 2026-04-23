@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-04-22T23:41:00Z",
+  "neo4j_instance": "bolt://localhost:7688 (separate from NOAH)",
+  "summary": "Same mapping engine, 3 unrelated PostgreSQL schemas, all migrated in < 4 seconds each with 0 orphans.",
+  "datasets": [
+    {
+      "name": "chinook",
+      "domain": "music store (11 tables)",
+      "source_pg_rows": 13605,
+      "showcase_features": [
+        "employee.reports_to self-join -> REPORTS_TO edge",
+        "playlist_track junction table -> INCLUDES edge",
+        "invoice -> invoice_line -> track chain"
+      ],
+      "neo4j_nodes": 6892,
+      "neo4j_relationships": 24529,
+      "migration_seconds": 2.86,
+      "orphans": 0,
+      "node_labels": ["Artist","Album","Track","Genre","MediaType","Playlist","Customer","Employee","Invoice","InvoiceLine"],
+      "relationship_types": ["RECORDED_BY","APPEARS_ON","IN_GENRE","ENCODED_AS","INCLUDES","SUPPORTED_BY","REPORTS_TO","PURCHASED_BY","PART_OF","FOR_TRACK"]
+    },
+    {
+      "name": "northwind",
+      "domain": "wholesale orders (8 core tables)",
+      "source_pg_rows": 3199,
+      "showcase_features": [
+        "employees.reports_to self-join -> REPORTS_TO edge",
+        "order_details composite-PK table -> CONTAINS edge with properties",
+        "order -> 3 foreign keys (customer, employee, shipper)"
+      ],
+      "neo4j_nodes": 1050,
+      "neo4j_relationships": 4807,
+      "migration_seconds": 1.52,
+      "orphans": 0,
+      "node_labels": ["Customer","Employee","Supplier","Category","Shipper","Product","Order"],
+      "relationship_types": ["ORDERED_BY","TAKEN_BY","SHIPPED_VIA","REPORTS_TO","IN_CATEGORY","SUPPLIED_BY","CONTAINS"]
+    },
+    {
+      "name": "pagila",
+      "domain": "DVD rental (12 domain tables, postgres official)",
+      "source_pg_rows": 46553,
+      "showcase_features": [
+        "two junction tables (film_actor, film_category)",
+        "multi-layer geography: Address -> City -> Country",
+        "rental temporal events pointing to Inventory + Customer + Staff"
+      ],
+      "neo4j_nodes": 25758,
+      "neo4j_relationships": 72024,
+      "migration_seconds": 3.33,
+      "orphans": 0,
+      "node_labels": ["Film","Actor","Category","Language","Inventory","Store","Staff","Customer","Address","City","Country","Rental"],
+      "relationship_types": ["IN_LANGUAGE","APPEARS_IN","CATEGORIZED_AS","COPY_OF","AT_STORE","WORKS_AT","STAFF_LIVES_AT","MEMBER_OF","CUSTOMER_LIVES_AT","STORE_LOCATED_AT","IN_CITY","IN_COUNTRY","RENTAL_OF","RENTED_BY","HANDLED_BY"]
+    }
+  ],
+  "noah_comparison": {
+    "name": "noah (reference)",
+    "domain": "NYC affordable housing (PostGIS)",
+    "neo4j_nodes": 11359,
+    "neo4j_relationships": 17072,
+    "migration_seconds": 7.89
+  },
+  "key_claim": "The same src/noah_converter pipeline — no code changes — migrated three foreign PostgreSQL schemas (music store, wholesale orders, DVD rental) into Neo4j in under 4 seconds each. Each dataset was driven entirely by a single mapping_rules.yaml file (~200 lines) declaring node labels and FK-derived relationships."
+}

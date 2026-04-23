@@ -1,0 +1,180 @@
+# Northwind mapping (wholesale/orders demo — 8 core tables, ~3.2k rows)
+# Showcases: self-join (Employee.reports_to), composite FK flattened to edge properties
+
+metadata:
+  version: "1.0"
+  database: "northwind"
+  description: "Northwind wholesale knowledge graph"
+  author: "NOAH Converter"
+
+spatial:
+  preserve_wkt: false
+  preserve_geojson: false
+  compute_centroids: false
+  compute_metrics: false
+  compute_bbox: false
+  use_neo4j_point: false
+  neighbors_threshold_km: 5.0
+
+nodes:
+
+  - label: Customer
+    source_table: customers
+    primary_property: customer_id
+    merge_keys: [customer_id]
+    indexes: [company_name, country, city]
+    properties:
+      - {name: customer_id,   type: string, nullable: false, source_column: customer_id,   source_type: varchar}
+      - {name: company_name,  type: string, nullable: false, source_column: company_name,  source_type: varchar}
+      - {name: contact_name,  type: string, nullable: true,  source_column: contact_name,  source_type: varchar}
+      - {name: contact_title, type: string, nullable: true,  source_column: contact_title, source_type: varchar}
+      - {name: city,          type: string, nullable: true,  source_column: city,          source_type: varchar}
+      - {name: country,       type: string, nullable: true,  source_column: country,       source_type: varchar}
+
+  - label: Employee
+    source_table: employees
+    primary_property: employee_id
+    merge_keys: [employee_id]
+    indexes: [title, country]
+    properties:
+      - {name: employee_id, type: integer, nullable: false, source_column: employee_id, source_type: smallint}
+      - {name: first_name,  type: string,  nullable: false, source_column: first_name,  source_type: varchar}
+      - {name: last_name,   type: string,  nullable: false, source_column: last_name,   source_type: varchar}
+      - {name: title,       type: string,  nullable: true,  source_column: title,       source_type: varchar}
+      - {name: hire_date,   type: date,    nullable: true,  source_column: hire_date,   source_type: date}
+      - {name: country,     type: string,  nullable: true,  source_column: country,     source_type: varchar}
+      - {name: city,        type: string,  nullable: true,  source_column: city,        source_type: varchar}
+
+  - label: Supplier
+    source_table: suppliers
+    primary_property: supplier_id
+    merge_keys: [supplier_id]
+    indexes: [company_name, country]
+    properties:
+      - {name: supplier_id,  type: integer, nullable: false, source_column: supplier_id,  source_type: smallint}
+      - {name: company_name, type: string,  nullable: false, source_column: company_name, source_type: varchar}
+      - {name: contact_name, type: string,  nullable: true,  source_column: contact_name, source_type: varchar}
+      - {name: country,      type: string,  nullable: true,  source_column: country,      source_type: varchar}
+      - {name: city,         type: string,  nullable: true,  source_column: city,         source_type: varchar}
+
+  - label: Category
+    source_table: categories
+    primary_property: category_id
+    merge_keys: [category_id]
+    indexes: [category_name]
+    properties:
+      - {name: category_id,   type: integer, nullable: false, source_column: category_id,   source_type: smallint}
+      - {name: category_name, type: string,  nullable: false, source_column: category_name, source_type: varchar}
+      - {name: description,   type: string,  nullable: true,  source_column: description,   source_type: text}
+
+  - label: Shipper
+    source_table: shippers
+    primary_property: shipper_id
+    merge_keys: [shipper_id]
+    properties:
+      - {name: shipper_id,   type: integer, nullable: false, source_column: shipper_id,   source_type: smallint}
+      - {name: company_name, type: string,  nullable: false, source_column: company_name, source_type: varchar}
+      - {name: phone,        type: string,  nullable: true,  source_column: phone,        source_type: varchar}
+
+  - label: Product
+    source_table: products
+    primary_property: product_id
+    merge_keys: [product_id]
+    indexes: [product_name]
+    properties:
+      - {name: product_id,    type: integer, nullable: false, source_column: product_id,    source_type: smallint}
+      - {name: product_name,  type: string,  nullable: false, source_column: product_name,  source_type: varchar}
+      - {name: unit_price,    type: float,   nullable: true,  source_column: unit_price,    source_type: real}
+      - {name: units_in_stock,type: integer, nullable: true,  source_column: units_in_stock,source_type: smallint}
+      - {name: discontinued,  type: integer, nullable: false, source_column: discontinued,  source_type: integer}
+
+  - label: Order
+    source_table: orders
+    primary_property: order_id
+    merge_keys: [order_id]
+    indexes: [order_date, ship_country]
+    properties:
+      - {name: order_id,     type: integer, nullable: false, source_column: order_id,     source_type: smallint}
+      - {name: order_date,   type: date,    nullable: true,  source_column: order_date,   source_type: date}
+      - {name: shipped_date, type: date,    nullable: true,  source_column: shipped_date, source_type: date}
+      - {name: required_date,type: date,    nullable: true,  source_column: required_date,source_type: date}
+      - {name: freight,      type: float,   nullable: true,  source_column: freight,      source_type: real}
+      - {name: ship_city,    type: string,  nullable: true,  source_column: ship_city,    source_type: varchar}
+      - {name: ship_country, type: string,  nullable: true,  source_column: ship_country, source_type: varchar}
+
+relationships:
+
+  - type: ORDERED_BY
+    from_label: Order
+    to_label: Customer
+    source_type: foreign_key
+    source_table: orders
+    from_id_column: order_id
+    to_id_column: customer_id
+    bidirectional: false
+    properties: []
+
+  - type: TAKEN_BY
+    from_label: Order
+    to_label: Employee
+    source_type: foreign_key
+    source_table: orders
+    from_id_column: order_id
+    to_id_column: employee_id
+    bidirectional: false
+    properties: []
+
+  - type: SHIPPED_VIA
+    from_label: Order
+    to_label: Shipper
+    source_type: foreign_key
+    source_table: orders
+    from_id_column: order_id
+    to_id_column: ship_via
+    bidirectional: false
+    properties: []
+
+  - type: REPORTS_TO
+    from_label: Employee
+    to_label: Employee
+    source_type: foreign_key
+    source_table: employees
+    from_id_column: employee_id
+    to_id_column: reports_to
+    bidirectional: false
+    properties: []
+
+  - type: IN_CATEGORY
+    from_label: Product
+    to_label: Category
+    source_type: foreign_key
+    source_table: products
+    from_id_column: product_id
+    to_id_column: category_id
+    bidirectional: false
+    properties: []
+
+  - type: SUPPLIED_BY
+    from_label: Product
+    to_label: Supplier
+    source_type: foreign_key
+    source_table: products
+    from_id_column: product_id
+    to_id_column: supplier_id
+    bidirectional: false
+    properties: []
+
+  # order_details is a junction table w/ composite PK (order_id, product_id) + edge props.
+  # Model as a direct (Order)-[CONTAINS]->(Product) edge carrying quantity/unit_price/discount.
+  - type: CONTAINS
+    from_label: Order
+    to_label: Product
+    source_type: foreign_key
+    source_table: order_details
+    from_id_column: order_id
+    to_id_column: product_id
+    bidirectional: false
+    properties:
+      - {name: quantity,   type: integer, nullable: false, source_column: quantity,   source_type: smallint}
+      - {name: unit_price, type: float,   nullable: false, source_column: unit_price, source_type: real}
+      - {name: discount,   type: float,   nullable: false, source_column: discount,   source_type: real}
