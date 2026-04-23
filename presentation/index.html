@@ -1,0 +1,1552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280,initial-scale=1">
+<title>Automated RDBMS → Knowledge Graph Conversion · NYU MASY Capstone</title>
+
+<style>
+/* ─── theme tokens ────────────────────────────────────────────── */
+:root{
+  --bg:            #ffffff;
+  --bg-subtle:     #f8fafc;
+  --ink:           #0f172a;
+  --ink-2:         #1e293b;
+  --muted:         #64748b;
+  --muted-2:       #94a3b8;
+  --rule:          #e2e8f0;
+  --accent:        #2563eb;        /* blue-600 — primary */
+  --accent-warm:   #f59e0b;        /* amber-500 */
+  --accent-green:  #059669;        /* emerald-600 */
+  --accent-red:    #dc2626;        /* red-600 */
+  --neo4j:         #4581c3;
+  --postgres:      #336791;
+  --code-bg:       #0f172a;
+  --code-ink:      #e2e8f0;
+  --code-kw:       #93c5fd;
+  --code-str:      #86efac;
+  --code-num:      #fbbf24;
+  --code-cmt:      #64748b;
+  --code-fn:       #f0abfc;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss01"}
+
+.deck{position:relative;width:100vw;height:100vh}
+
+/* ─── slide base ──────────────────────────────────────────────── */
+.slide{
+  position:absolute;inset:0;
+  display:none;flex-direction:column;justify-content:safe center;
+  padding:6vh 9vw 8vh 9vw;       /* extra bottom padding so scroll area clears chrome */
+  opacity:0;transition:opacity .35s ease;
+  overflow-y:auto;                /* scroll inside the slide when content exceeds viewport */
+  overflow-x:hidden;
+  scrollbar-width:thin;
+  scrollbar-color:#cbd5e1 transparent;
+}
+.slide.active{display:flex;opacity:1}
+.slide::-webkit-scrollbar{width:8px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+.slide::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+
+/* eyebrow label above titles */
+.eyebrow{
+  font-size:.75rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:1rem;
+}
+
+h1.title{
+  font-size:clamp(2.2rem,5vw,4rem);font-weight:800;letter-spacing:-.02em;
+  line-height:1.05;color:var(--ink);margin-bottom:1.25rem;
+}
+h2.subtitle{
+  font-size:clamp(1.25rem,2.3vw,1.75rem);font-weight:500;
+  color:var(--muted);line-height:1.35;max-width:46ch;
+}
+h1.section{
+  font-size:clamp(2rem,4vw,3.25rem);font-weight:700;letter-spacing:-.02em;
+  line-height:1.1;color:var(--ink);margin-bottom:2rem;
+}
+h1.section em{color:var(--accent);font-style:normal;font-weight:800}
+
+.lede{
+  font-size:clamp(1.05rem,1.6vw,1.35rem);color:var(--ink-2);
+  max-width:70ch;line-height:1.55;margin-bottom:1.5rem;
+}
+
+.meta{
+  margin-top:2.2rem;color:var(--muted);font-size:.95rem;line-height:1.7;
+}
+.meta b{color:var(--ink-2);font-weight:600}
+
+/* ─── callouts ───────────────────────────────────────────────── */
+.badge{
+  display:inline-block;padding:.25rem .7rem;border-radius:999px;
+  font-size:.78rem;font-weight:600;letter-spacing:.02em;
+  background:var(--bg-subtle);color:var(--ink-2);border:1px solid var(--rule);
+}
+.badge.accent{background:#eff6ff;color:var(--accent);border-color:#bfdbfe}
+.badge.green {background:#ecfdf5;color:var(--accent-green);border-color:#a7f3d0}
+.badge.warm  {background:#fffbeb;color:#b45309;border-color:#fde68a}
+
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;margin-top:2rem}
+.stat{padding:1.1rem 1.3rem;border:1px solid var(--rule);border-radius:12px;background:var(--bg-subtle)}
+.stat .n{font-size:1.9rem;font-weight:800;letter-spacing:-.01em;color:var(--ink);line-height:1.1}
+.stat .l{font-size:.82rem;color:var(--muted);margin-top:.35rem;font-weight:500}
+
+/* ─── bullet list ─────────────────────────────────────────────── */
+ul.bullets{list-style:none;margin-top:1rem}
+ul.bullets li{
+  position:relative;padding-left:1.6rem;margin-bottom:.9rem;line-height:1.5;
+  font-size:clamp(1rem,1.35vw,1.15rem);color:var(--ink-2);max-width:68ch;
+}
+ul.bullets li::before{
+  content:"";position:absolute;left:0;top:.55em;width:.55rem;height:.55rem;
+  background:var(--accent);border-radius:2px;
+}
+ul.bullets li b{color:var(--ink);font-weight:600}
+
+ul.lessons{list-style:none;margin-top:1rem}
+ul.lessons li{
+  padding:1.1rem 1.2rem;border:1px solid var(--rule);border-radius:10px;
+  margin-bottom:.85rem;background:var(--bg);
+}
+ul.lessons li .tag{
+  display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:.4rem;
+}
+ul.lessons li .body{color:var(--ink-2);line-height:1.5;font-size:1.02rem}
+
+/* ─── code blocks ─────────────────────────────────────────────── */
+pre.code, pre.term{
+  background:var(--code-bg);color:var(--code-ink);
+  font-family:"SF Mono",Monaco,"Cascadia Code","Roboto Mono",monospace;
+  font-size:.95rem;line-height:1.55;
+  padding:1.1rem 1.3rem;border-radius:10px;overflow:auto;
+  border:1px solid #1e293b;
+}
+pre.code .k{color:var(--code-kw);font-weight:600}
+pre.code .s{color:var(--code-str)}
+pre.code .n{color:var(--code-num)}
+pre.code .c{color:var(--code-cmt);font-style:italic}
+pre.code .f{color:var(--code-fn)}
+pre.term .p{color:var(--code-kw)}            /* prompt */
+pre.term .o{color:var(--code-str)}            /* ok/success */
+pre.term .m{color:var(--muted-2)}             /* muted */
+pre.term .b{color:var(--ink);background:transparent;font-weight:700}
+
+.code-label{
+  font-family:"SF Mono",Monaco,monospace;font-size:.72rem;letter-spacing:.14em;
+  color:var(--muted);margin-bottom:.4rem;text-transform:uppercase;font-weight:600;
+}
+
+/* ─── two-column code diff ───────────────────────────────────── */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.2rem}
+.split > div{display:flex;flex-direction:column;min-width:0}
+.split pre{flex:1;max-height:46vh}
+.split .meta-inline{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-top:.6rem;font-size:.85rem;color:var(--muted);
+}
+.split .meta-inline .hi{color:var(--ink);font-weight:600;font-size:1rem}
+
+/* ─── tables ─────────────────────────────────────────────────── */
+table.grid{width:100%;border-collapse:collapse;margin-top:1.1rem;font-size:.98rem}
+table.grid th,table.grid td{padding:.65rem .85rem;text-align:left;border-bottom:1px solid var(--rule)}
+table.grid th{font-weight:600;color:var(--muted);font-size:.78rem;letter-spacing:.05em;text-transform:uppercase}
+table.grid td.n{font-variant-numeric:tabular-nums;text-align:right}
+table.grid td.n.pg{color:var(--postgres);font-weight:500}
+table.grid td.n.n4j{color:var(--neo4j);font-weight:600}
+table.grid tr.win td.n.n4j{color:var(--accent-green);font-weight:700}
+
+/* ─── iframe demo slide ──────────────────────────────────────── */
+.demo-frame{
+  border:1px solid var(--rule);border-radius:10px;overflow:hidden;
+  background:var(--bg-subtle);box-shadow:0 6px 22px rgba(15,23,42,.08);
+  flex:1;min-height:0;
+}
+.demo-frame iframe{width:100%;height:100%;border:0}
+.demo-hint{
+  margin-top:.8rem;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;
+}
+.demo-hint .kbd{
+  font-family:"SF Mono",monospace;background:var(--bg-subtle);border:1px solid var(--rule);
+  padding:.15rem .5rem;border-radius:5px;font-size:.82rem;color:var(--ink-2);
+}
+
+/* ─── footer / chrome ────────────────────────────────────────── */
+.chrome{
+  position:fixed;left:0;right:0;bottom:0;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.75rem 1.5rem;font-size:.75rem;color:var(--muted);
+  pointer-events:none;z-index:50;
+}
+.chrome .brand{font-weight:600;color:var(--ink-2);letter-spacing:.04em}
+.chrome .counter{font-variant-numeric:tabular-nums}
+
+.progress{
+  position:fixed;left:0;top:0;height:3px;background:var(--accent);
+  width:0;transition:width .35s ease;z-index:60;
+}
+
+/* overview mode — press ESC */
+.overview{
+  position:fixed;inset:0;background:rgba(248,250,252,.97);z-index:100;
+  display:none;padding:3vh 3vw;overflow:auto;
+}
+.overview.on{display:block}
+.overview-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;
+}
+.overview-item{
+  aspect-ratio:16/9;border:1px solid var(--rule);border-radius:8px;
+  padding:.8rem;background:var(--bg);cursor:pointer;
+  display:flex;flex-direction:column;justify-content:space-between;
+  font-size:.78rem;transition:border-color .15s ease,transform .15s ease;
+  overflow:hidden;
+}
+.overview-item:hover{border-color:var(--accent);transform:translateY(-2px)}
+.overview-item .ov-n{color:var(--muted);font-weight:600}
+.overview-item .ov-t{color:var(--ink);font-weight:600;line-height:1.25;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+/* speaker notes panel — press N */
+.notes{
+  position:fixed;right:0;top:0;bottom:0;width:32vw;
+  background:var(--bg);border-left:1px solid var(--rule);
+  padding:2rem;overflow:auto;z-index:90;
+  box-shadow:-4px 0 24px rgba(15,23,42,.08);
+  transform:translateX(100%);transition:transform .25s ease;
+}
+.notes.on{transform:translateX(0)}
+.notes h4{color:var(--muted);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.8rem;font-weight:600}
+.notes .content{font-size:.9rem;line-height:1.55;color:var(--ink-2)}
+.notes .content b{color:var(--ink)}
+.notes .content ul{margin:.5rem 0 .5rem 1.2rem}
+
+/* SVG defaults */
+svg{max-width:100%;height:auto}
+.chart-caption{font-size:.82rem;color:var(--muted);margin-top:.6rem;text-align:center}
+
+/* slide layouts */
+.slide.title-slide{justify-content:center}
+.slide.title-slide .title{font-size:clamp(2.8rem,6vw,5rem);line-height:1}
+.slide.title-slide .subtitle{font-size:clamp(1.25rem,2.2vw,1.6rem);margin-top:1.2rem}
+.slide.title-slide .sig{margin-top:3rem;border-left:3px solid var(--accent);padding-left:1.2rem}
+
+.slide.demo-slide{padding:4vh 4vw}
+.slide.demo-slide h1{font-size:1.6rem;margin-bottom:.7rem}
+.slide.demo-slide .demo-hint{margin-top:.6rem}
+
+/* Dense pipeline-demo slide: shrink code typography so all 3 steps fit */
+.slide.pipeline-demo{padding:3vh 4vw}
+.slide.pipeline-demo h1.section{font-size:clamp(1.3rem,2.3vw,1.8rem);margin-bottom:.5rem}
+.slide.pipeline-demo .columns{gap:1.6rem;margin-top:.5rem;flex:1;min-height:0}
+.slide.pipeline-demo .col{min-height:0;display:flex;flex-direction:column}
+.slide.pipeline-demo .col h3{font-size:.95rem;margin-bottom:.4rem}
+.slide.pipeline-demo pre.term{font-size:.78rem;line-height:1.38;padding:.7rem .8rem;flex:1;min-height:0}
+.slide.pipeline-demo .meta{margin-top:.6rem;font-size:.85rem}
+
+/* 3-step choreography bar above the terminals */
+.demo-sequence{
+  display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;
+  gap:.6rem;margin:.3rem 0 .8rem 0;
+}
+.demo-sequence .step{
+  padding:.55rem .8rem;border:1px solid var(--rule);border-radius:8px;
+  background:var(--bg-subtle);display:flex;align-items:center;gap:.55rem;min-height:52px;
+}
+.demo-sequence .step .num{
+  flex-shrink:0;width:1.5rem;height:1.5rem;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:.72rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.demo-sequence .step.tab-step{background:#eef5ff;border-color:#bfdbfe}
+.demo-sequence .step.tab-step .num{background:#2563eb}
+.demo-sequence .step.term-step{background:#fffbeb;border-color:#fde68a}
+.demo-sequence .step.term-step .num{background:#d97706}
+.demo-sequence .step .label{font-size:.8rem;font-weight:600;color:var(--ink);line-height:1.25}
+.demo-sequence .step .label small{display:block;color:var(--muted);font-weight:500;font-size:.7rem;margin-top:.1rem}
+.demo-sequence .arrow{color:var(--muted);font-size:1.2rem;font-weight:700}
+
+.slide.chart-slide{justify-content:flex-start}
+.slide.chart-slide .chart-container{
+  flex:1;display:flex;align-items:center;justify-content:center;margin-top:1rem;
+}
+.slide.chart-slide svg{max-height:60vh}
+
+/* two-column layout */
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin-top:1.5rem}
+.columns .col h3{font-size:1.05rem;font-weight:700;color:var(--ink);margin-bottom:.8rem}
+.columns .col h3 .tag{
+  display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.1em;
+  background:var(--bg-subtle);color:var(--muted);padding:.15rem .55rem;border-radius:4px;
+  margin-right:.5rem;text-transform:uppercase;
+}
+
+/* step list */
+.steps{list-style:none;counter-reset:step;margin-top:1rem}
+.steps li{
+  counter-increment:step;position:relative;padding:.9rem 0 .9rem 3rem;
+  border-bottom:1px solid var(--rule);font-size:1.02rem;color:var(--ink-2);line-height:1.45;
+}
+.steps li:last-child{border-bottom:0}
+.steps li::before{
+  content:counter(step);position:absolute;left:0;top:.8rem;
+  width:2rem;height:2rem;border-radius:50%;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;font-weight:700;
+}
+.steps li code{
+  font-family:"SF Mono",monospace;font-size:.9rem;background:var(--bg-subtle);
+  padding:.08rem .4rem;border-radius:4px;color:var(--ink);border:1px solid var(--rule);
+}
+
+/* academic papers cards */
+.papers{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;margin-top:1.5rem}
+.paper{
+  padding:1.2rem;border:1px solid var(--rule);border-radius:10px;background:var(--bg-subtle);
+  display:flex;flex-direction:column;
+}
+.paper .title{font-size:1.05rem;font-weight:700;color:var(--ink);line-height:1.3;margin-bottom:.4rem}
+.paper .authors{font-size:.82rem;color:var(--muted);margin-bottom:.8rem}
+.paper .contribution{font-size:.92rem;color:var(--ink-2);line-height:1.5;flex:1}
+.paper .tag{
+  display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:.6rem;
+}
+
+.print-hint{
+  position:fixed;top:.5rem;left:.5rem;font-size:.7rem;color:var(--muted);
+  background:var(--bg-subtle);padding:.3rem .6rem;border-radius:4px;border:1px solid var(--rule);
+  z-index:55;opacity:0;transition:opacity .3s ease;pointer-events:none;
+}
+.slide.active ~ .chrome .print-hint{opacity:1}
+
+/* Slide 14 — agnostic proof */
+.agnostic-grid{display:flex;flex-direction:column;gap:1rem;margin-top:.8rem}
+.agnostic-table{width:100%;font-size:.88rem}
+.agnostic-table th{background:var(--bg-subtle);font-weight:600;padding:.55rem .7rem}
+.agnostic-table td{padding:.45rem .7rem}
+.agnostic-table .reference-row{background:#f8fafc;color:var(--ink-2)}
+.agnostic-table .reference-row td{font-style:italic}
+.agnostic-table .n.win{color:var(--accent-green);font-weight:700}
+
+.agnostic-what{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem}
+.what-card{
+  padding:.75rem .9rem;border:1px solid var(--rule);border-radius:8px;background:var(--bg-subtle);
+  font-size:.82rem;line-height:1.5;color:var(--ink-2);
+}
+.what-card .tag{
+  display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:.4rem;
+}
+.what-card b{color:var(--ink)}
+.what-card code{font-size:.78rem;background:#fff;padding:.05rem .3rem;border-radius:3px;border:1px solid var(--rule);color:var(--ink)}
+
+.demo-live-bar{
+  display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;
+  margin-top:.8rem;padding:.6rem .9rem;
+  background:#fffbeb;border:1px solid #fde68a;border-radius:8px;
+}
+.demo-live-bar code{
+  font-family:"SF Mono",monospace;font-size:.88rem;font-weight:700;
+  background:#1e293b;color:#fef3c7;padding:.25rem .55rem;border-radius:4px;
+}
+</style>
+</head>
+<body>
+
+<div class="progress"></div>
+
+<div class="deck">
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 01  ·  TITLE
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide title-slide active" data-title="Title">
+  <div class="eyebrow">NYU SPS MASY · Capstone · Spring 2026</div>
+  <h1 class="title">Automated RDBMS → Knowledge Graph Conversion</h1>
+  <h2 class="subtitle">A natural-language interface over NYC affordable housing data,
+    built on 8,604 real housing projects and validated end-to-end against PostgreSQL + PostGIS.</h2>
+  <div class="sig">
+    <div style="font-size:1.1rem;font-weight:600;color:var(--ink)">Zhen Yang</div>
+    <div style="font-size:.9rem;color:var(--muted);margin-top:.3rem">
+      Advisor: Dr. Andres Fortino &nbsp;·&nbsp; Sponsor: The Digital Forge Lab
+    </div>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>Opening (60s):</b> Thanks for making time. Over the next ~25 minutes I'll walk through
+    a working conversion bot — not a concept, a real system running on my machine right now
+    against 8,604 NYC housing projects. I'll show the pipeline end to end, do three live demos,
+    and close with a candid view of what's generalizable and what's not.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 02  ·  THE PROBLEM (why graph)
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" data-title="The Problem">
+  <div class="eyebrow">The Problem</div>
+  <h1 class="section">Relational databases optimize for <em>storage</em>, not for <em>relationships</em>.</h1>
+
+  <div class="split">
+    <div>
+      <div class="code-label">PostgreSQL · 21 lines · 174.4 ms</div>
+      <pre class="code"><span class="c">-- "All ZIPs within 2 hops of 10001"</span>
+<span class="k">WITH RECURSIVE</span> reachable(zip_code, depth) <span class="k">AS</span> (
+  <span class="k">SELECT</span> zip_code, <span class="n">0</span>
+  <span class="k">FROM</span>   zip_shapes
+  <span class="k">WHERE</span>  zip_code = <span class="s">'10001'</span>
+  <span class="k">UNION</span>
+  <span class="k">SELECT</span> <span class="k">CASE WHEN</span> a.zip_code = r.zip_code
+              <span class="k">THEN</span> b.zip_code <span class="k">ELSE</span> a.zip_code <span class="k">END</span>,
+         r.depth + <span class="n">1</span>
+  <span class="k">FROM</span>   reachable r
+  <span class="k">JOIN</span>   zip_shapes a
+  <span class="k">JOIN</span>   zip_shapes b
+         <span class="k">ON</span>  a.zip_code &lt; b.zip_code
+         <span class="k">AND</span> <span class="f">ST_Touches</span>(a.geom, b.geom)
+    <span class="k">ON</span>   r.zip_code <span class="k">IN</span> (a.zip_code, b.zip_code)
+  <span class="k">WHERE</span>  r.depth &lt; <span class="n">2</span>
+)
+<span class="k">SELECT DISTINCT</span> zip_code, <span class="f">MIN</span>(depth)
+<span class="k">FROM</span> reachable
+<span class="k">GROUP BY</span> zip_code;</pre>
+    </div>
+    <div>
+      <div class="code-label">Neo4j · 4 lines · 4.6 ms</div>
+      <pre class="code"><span class="c">// same question</span>
+<span class="k">MATCH</span> path = (z:ZipCode {zip_code:<span class="s">'10001'</span>})
+              -[:NEIGHBORS*<span class="n">0</span>..<span class="n">2</span>]-(n:ZipCode)
+<span class="k">WITH</span>  n.zip_code <span class="k">AS</span> zip_code,
+      <span class="f">min</span>(<span class="f">length</span>(path)) <span class="k">AS</span> min_depth
+<span class="k">RETURN</span> zip_code, min_depth
+<span class="k">ORDER BY</span> min_depth, zip_code;</pre>
+    </div>
+  </div>
+
+  <div class="meta">
+    Same question. Different paradigm. <b>5× less code, 37× faster runtime.</b>
+    The gap widens as the query graph deepens — and so does the gap in who can
+    actually write the query.
+  </div>
+  <aside class="notes-content" hidden>
+    <b>Key points (90s):</b>
+    <ul>
+      <li>Set up the tension: the same real question, apples-to-apples.</li>
+      <li>Call out <b>5× less code</b> and <b>37× faster</b> — teased here, proven later on the benchmark slide.</li>
+      <li>Second-order point: the SQL is unreadable to a policy analyst. Who actually uses this data?</li>
+    </ul>
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 03  ·  PROJECT GOAL
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" data-title="Project Goal">
+  <div class="eyebrow">Goal</div>
+  <h1 class="section">Build a <em>reusable</em> conversion bot — and prove it on real data.</h1>
+
+  <p class="lede">
+    Convert the NOAH (Naturally Occurring Affordable Housing) PostgreSQL database
+    — 8,604 projects, 177 NYC ZIPs, 2,225 census tracts, PostGIS geometry —
+    into a Neo4j knowledge graph, with a natural-language query interface that
+    non-technical users can actually use.
+  </p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="n">8,604</div><div class="l">housing projects migrated</div></div>
+    <div class="stat"><div class="n">≥ 75 %</div><div class="l">Text2Cypher accuracy target</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">data loss on referential integrity</div></div>
+    <div class="stat"><div class="n">12 weeks</div><div class="l">from proposal to final delivery</div></div>
+  </div>
+
+  <div class="meta">
+    Four SMART objectives from the project specification, each with a concrete validation
+    artifact committed in the repo.
+  </div>
+  <aside class="notes-content" hidden>
+    <b>45s.</b> These four numbers are the scoring rubric. They all get validated later in the deck
+    — audit (0 data loss), benchmark report (95% Text2Cypher), WBS (12 weeks).
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 04  ·  ACADEMIC FOUNDATION
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" data-title="Academic Foundation">
+  <div class="eyebrow">Built on published research</div>
+  <h1 class="section">Three papers, synthesized into a production-ready pipeline.</h1>
+
+  <div class="papers">
+    <div class="paper">
+      <div class="tag">FORMAL MODEL</div>
+      <div class="title">De Virgilio et al., 2013</div>
+      <div class="authors">ACM GRADES Workshop</div>
+      <div class="contribution">
+        Formal conversion rules: tables → nodes, foreign keys → relationships,
+        join tables → direct edges. Exploits RDBMS constraints to preserve
+        semantic integrity.
+      </div>
+    </div>
+    <div class="paper">
+      <div class="tag">AUTOMATION</div>
+      <div class="title">Rel2Graph</div>
+      <div class="authors">Zhao et al., 2023 · arXiv:2310.01080</div>
+      <div class="contribution">
+        Automated knowledge graph construction from multiple relational sources,
+        validated on Spider / KaggleDBQA benchmarks. Proves the pipeline shape
+        scales beyond a single schema.
+      </div>
+    </div>
+    <div class="paper">
+      <div class="tag">TOOLING</div>
+      <div class="title">Data2Neo</div>
+      <div class="authors">Minder et al., 2024 · arXiv:2406.04995</div>
+      <div class="contribution">
+        Open-source Python patterns for incremental Neo4j loading with
+        configurable mapping. Operational blueprint for batch MERGE with
+        idempotency.
+      </div>
+    </div>
+  </div>
+
+  <div class="meta" style="margin-top:2rem">
+    <b>My contribution:</b> synthesize all three into a single config-driven pipeline,
+    add an LLM-powered schema interpreter, and validate on a real PostGIS dataset.
+  </div>
+  <aside class="notes-content" hidden>
+    <b>75s.</b> Credit where it's due — the conversion patterns are not my invention.
+    The contribution is the synthesis: De Virgilio gives rules, Rel2Graph gives the
+    automation target, Data2Neo gives the operational shape. I tied them together
+    and added LLM interpretation for the initial mapping draft.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 05  ·  ARCHITECTURE
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide chart-slide" data-title="Architecture">
+  <div class="eyebrow">System Architecture</div>
+  <h1 class="section">Five components. <em>One</em> config file.</h1>
+
+  <div class="chart-container">
+    <svg viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="System architecture diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+        </marker>
+        <marker id="arrow-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/>
+        </marker>
+      </defs>
+
+      <!-- PostgreSQL source -->
+      <g transform="translate(40,200)">
+        <rect width="170" height="120" rx="10" fill="#336791" opacity=".08" stroke="#336791" stroke-width="1.5"/>
+        <text x="85" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#336791">PostgreSQL</text>
+        <text x="85" y="60" text-anchor="middle" font-size="11" fill="#475569">+ PostGIS</text>
+        <text x="85" y="85" text-anchor="middle" font-size="10" fill="#64748b">13 tables</text>
+        <text x="85" y="100" text-anchor="middle" font-size="10" fill="#64748b">8,604 projects</text>
+      </g>
+
+      <!-- Schema Analyzer -->
+      <g transform="translate(260,100)">
+        <rect width="180" height="80" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="90" y="32" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Schema Analyzer</text>
+        <text x="90" y="52" text-anchor="middle" font-size="10" fill="#475569">introspect tables + FKs</text>
+        <text x="90" y="67" text-anchor="middle" font-size="10" fill="#475569">detect PostGIS columns</text>
+      </g>
+
+      <!-- LLM Interpreter -->
+      <g transform="translate(260,220)">
+        <rect width="180" height="80" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="90" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">LLM Interpreter</text>
+        <text x="90" y="46" text-anchor="middle" font-size="10" fill="#475569">Claude Sonnet 4.5</text>
+        <text x="90" y="60" text-anchor="middle" font-size="10" fill="#475569">→ draft mapping.yaml</text>
+        <text x="90" y="74" text-anchor="middle" font-size="9" fill="#94a3b8">confidence scores</text>
+      </g>
+
+      <!-- Mapping Engine -->
+      <g transform="translate(260,340)">
+        <rect width="180" height="80" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="90" y="32" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Mapping Engine</text>
+        <text x="90" y="52" text-anchor="middle" font-size="10" fill="#475569">De Virgilio rules</text>
+        <text x="90" y="67" text-anchor="middle" font-size="10" fill="#475569">YAML config</text>
+      </g>
+
+      <!-- Data Migrator -->
+      <g transform="translate(500,220)">
+        <rect width="180" height="120" rx="10" fill="#1e3a8a" stroke="#1e3a8a" stroke-width="1.5"/>
+        <text x="90" y="40" text-anchor="middle" font-size="14" font-weight="800" fill="#ffffff">Data Migrator</text>
+        <text x="90" y="60" text-anchor="middle" font-size="10" fill="#bfdbfe">batch MERGE · 500/batch</text>
+        <text x="90" y="76" text-anchor="middle" font-size="10" fill="#bfdbfe">idempotent</text>
+        <text x="90" y="92" text-anchor="middle" font-size="10" fill="#bfdbfe">FK + spatial + computed</text>
+      </g>
+
+      <!-- Auditor -->
+      <g transform="translate(500,80)">
+        <rect width="180" height="90" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+        <text x="90" y="30" text-anchor="middle" font-size="13" font-weight="700" fill="#064e3b">Post-Migration Audit</text>
+        <text x="90" y="50" text-anchor="middle" font-size="10" fill="#065f46">node/edge parity</text>
+        <text x="90" y="65" text-anchor="middle" font-size="10" fill="#065f46">100 sample rows verified</text>
+        <text x="90" y="80" text-anchor="middle" font-size="10" fill="#065f46">orphan FK detection</text>
+      </g>
+
+      <!-- Text2Cypher -->
+      <g transform="translate(500,390)">
+        <rect width="180" height="90" rx="8" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="90" y="30" text-anchor="middle" font-size="13" font-weight="700" fill="#78350f">Text2Cypher</text>
+        <text x="90" y="50" text-anchor="middle" font-size="10" fill="#92400e">schema-aware prompt</text>
+        <text x="90" y="65" text-anchor="middle" font-size="10" fill="#92400e">Claude · OpenAI · Gemini</text>
+        <text x="90" y="80" text-anchor="middle" font-size="10" fill="#92400e">95% / 20 benchmark</text>
+      </g>
+
+      <!-- Neo4j target -->
+      <g transform="translate(730,200)">
+        <rect width="170" height="120" rx="10" fill="#4581c3" opacity=".08" stroke="#4581c3" stroke-width="1.5"/>
+        <text x="85" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#4581c3">Neo4j</text>
+        <text x="85" y="60" text-anchor="middle" font-size="11" fill="#475569">Knowledge Graph</text>
+        <text x="85" y="85" text-anchor="middle" font-size="10" fill="#64748b">11,359 nodes</text>
+        <text x="85" y="100" text-anchor="middle" font-size="10" fill="#64748b">17,072 relationships</text>
+      </g>
+
+      <!-- Streamlit -->
+      <g transform="translate(950,200)">
+        <rect width="210" height="120" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="105" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#7f1d1d">Streamlit Dashboard</text>
+        <text x="105" y="62" text-anchor="middle" font-size="10" fill="#991b1b">Ask · Explore · Templates</text>
+        <text x="105" y="78" text-anchor="middle" font-size="10" fill="#991b1b">Insights · Settings</text>
+        <text x="105" y="100" text-anchor="middle" font-size="10" fill="#b91c1c">pyvis graph viz</text>
+      </g>
+
+      <!-- Arrows -->
+      <!-- PG → Schema Analyzer -->
+      <path d="M210 240 L260 140" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <!-- PG → LLM interp -->
+      <path d="M210 260 L260 260" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <!-- PG → Mapping engine -->
+      <path d="M210 280 L260 380" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <!-- Schema Analyzer → LLM -->
+      <path d="M350 180 L350 220" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#arrow-accent)"/>
+      <!-- LLM → Mapping engine -->
+      <path d="M350 300 L350 340" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#arrow-accent)"/>
+      <!-- Mapping engine → Data migrator -->
+      <path d="M440 380 L500 300" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#arrow-accent)"/>
+      <!-- Schema analyzer → Data migrator (direct config) -->
+      <path d="M440 140 L500 240" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#arrow-accent)" stroke-dasharray="4 3"/>
+      <!-- Data Migrator → Neo4j -->
+      <path d="M680 280 L730 260" stroke="#1e3a8a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+      <!-- Data migrator ↔ Auditor -->
+      <path d="M590 220 L590 170" stroke="#059669" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <path d="M600 170 L600 220" stroke="#059669" stroke-width="1.5" fill="none" marker-end="url(#arrow)" stroke-dasharray="3 2"/>
+      <!-- Text2Cypher ↔ Neo4j -->
+      <path d="M680 430 Q780 420 780 320" stroke="#f59e0b" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <!-- Neo4j → Streamlit -->
+      <path d="M900 260 L950 260" stroke="#4581c3" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+      <!-- Text2Cypher → Streamlit -->
+      <path d="M680 420 Q900 420 1000 320" stroke="#f59e0b" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+      <!-- Labels -->
+      <text x="625" y="175" font-size="9" fill="#059669" font-style="italic">validates</text>
+      <text x="460" y="155" font-size="9" fill="#2563eb">schema</text>
+      <text x="460" y="330" font-size="9" fill="#2563eb">mapping</text>
+    </svg>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>90s — whiteboard-style narration:</b>
+    Five components. Everything but the Data Migrator is stateless; the Migrator does the
+    heavy lifting. Crucially, <b>none of these know about NOAH</b> — they're all driven by
+    the config file. That becomes the "is it generalizable" story later.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 06  ·  GRAPH SCHEMA (5 nodes / 6 rels)
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide chart-slide" data-title="Graph Schema">
+  <div class="eyebrow">The Target Model</div>
+  <h1 class="section">5 node labels, 6 relationship types, <em>PostGIS-native</em>.</h1>
+
+  <div class="chart-container">
+    <svg viewBox="0 0 1100 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Graph schema">
+      <defs>
+        <marker id="sm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+        </marker>
+      </defs>
+
+      <!-- ZipCode (center) -->
+      <g transform="translate(450,230)">
+        <circle r="65" fill="#4581c3" stroke="#4581c3" stroke-width="2"/>
+        <text y="-8" text-anchor="middle" font-size="14" font-weight="800" fill="#ffffff">ZipCode</text>
+        <text y="12" text-anchor="middle" font-size="11" fill="#e0ecf7">177 nodes</text>
+        <text y="28" text-anchor="middle" font-size="9" fill="#bfd4e8">PostGIS geometry</text>
+      </g>
+
+      <!-- HousingProject (left) -->
+      <g transform="translate(130,230)">
+        <circle r="62" fill="#2563eb" stroke="#2563eb" stroke-width="2"/>
+        <text y="-8" text-anchor="middle" font-size="13" font-weight="800" fill="#ffffff">HousingProject</text>
+        <text y="12" text-anchor="middle" font-size="11" fill="#dbeafe">8,604 nodes</text>
+        <text y="28" text-anchor="middle" font-size="9" fill="#bfdbfe">from Socrata hg8x-zxpr</text>
+      </g>
+
+      <!-- Demographic (top) -->
+      <g transform="translate(450,70)">
+        <circle r="55" fill="#059669" stroke="#059669" stroke-width="2"/>
+        <text y="-5" text-anchor="middle" font-size="13" font-weight="800" fill="#ffffff">Demographic</text>
+        <text y="14" text-anchor="middle" font-size="11" fill="#d1fae5">176 nodes</text>
+        <text y="28" text-anchor="middle" font-size="9" fill="#a7f3d0">ACS 2022</text>
+      </g>
+
+      <!-- AffordabilityAnalysis (right) -->
+      <g transform="translate(750,150)">
+        <circle r="58" fill="#f59e0b" stroke="#f59e0b" stroke-width="2"/>
+        <text y="-5" text-anchor="middle" font-size="12" font-weight="800" fill="#ffffff">Affordability</text>
+        <text y="12" text-anchor="middle" font-size="12" font-weight="800" fill="#ffffff">Analysis</text>
+        <text y="28" text-anchor="middle" font-size="10" fill="#fef3c7">177 nodes</text>
+      </g>
+
+      <!-- RentBurden (bottom right) -->
+      <g transform="translate(770,380)">
+        <circle r="58" fill="#dc2626" stroke="#dc2626" stroke-width="2"/>
+        <text y="-5" text-anchor="middle" font-size="13" font-weight="800" fill="#ffffff">RentBurden</text>
+        <text y="14" text-anchor="middle" font-size="11" fill="#fee2e2">2,225 nodes</text>
+        <text y="28" text-anchor="middle" font-size="9" fill="#fecaca">census tracts</text>
+      </g>
+
+      <!-- Self-loop NEIGHBORS on ZipCode — placed on LEFT of ZipCode so it's clear of other labels -->
+      <path d="M 400 200 Q 360 175 370 225 Q 385 235 400 225" fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#sm-arrow)"/>
+      <text x="280" y="185" font-size="10" font-weight="600" fill="#334155">NEIGHBORS</text>
+      <text x="280" y="200" font-size="9" fill="#64748b">392 · bidirectional</text>
+
+      <!-- HousingProject → ZipCode (LOCATED_IN_ZIP) -->
+      <path d="M 192 245 L 385 245" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)"/>
+      <text x="288" y="268" font-size="10" font-weight="600" text-anchor="middle" fill="#334155">LOCATED_IN_ZIP</text>
+      <text x="288" y="284" font-size="9" text-anchor="middle" fill="#64748b">6,851 · 35 orphan</text>
+
+      <!-- ZipCode → Demographic (HAS_DEMOGRAPHICS) -->
+      <path d="M 450 165 L 450 125" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)"/>
+      <text x="460" y="150" font-size="10" font-weight="600" fill="#334155">HAS_DEMOGRAPHICS</text>
+      <text x="460" y="165" font-size="9" fill="#64748b">176 · new in v2</text>
+
+      <!-- ZipCode → AffordabilityAnalysis (HAS_AFFORDABILITY_DATA) — sweep to the right -->
+      <path d="M 515 205 L 700 165" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)"/>
+      <text x="640" y="200" font-size="10" font-weight="600" text-anchor="middle" fill="#334155">HAS_AFFORDABILITY_DATA</text>
+      <text x="640" y="215" font-size="9" text-anchor="middle" fill="#64748b">177</text>
+
+      <!-- ZipCode → RentBurden (CONTAINS_TRACT, spatial) -->
+      <path d="M 515 265 L 720 350" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)"/>
+      <text x="580" y="330" font-size="10" font-weight="600" fill="#334155">CONTAINS_TRACT</text>
+      <text x="580" y="345" font-size="9" fill="#64748b">4,050 · ST_Intersects</text>
+
+      <!-- HousingProject → RentBurden (IN_CENSUS_TRACT, computed) -->
+      <path d="M 170 290 Q 400 480 715 390" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)" stroke-dasharray="4 3"/>
+      <text x="440" y="465" font-size="10" font-weight="600" fill="#334155">IN_CENSUS_TRACT</text>
+      <text x="440" y="480" font-size="9" fill="#64748b">5,426 · borough+tract → geo_id (computed)</text>
+
+      <!-- Legend -->
+      <g transform="translate(20,470)">
+        <rect x="0" y="0" width="200" height="40" rx="4" fill="#f8fafc" stroke="#e2e8f0"/>
+        <circle cx="15" cy="15" r="5" fill="#475569"/>
+        <text x="28" y="19" font-size="10" fill="#334155">FK-based · computed · spatial</text>
+        <text x="28" y="32" font-size="9" fill="#64748b">Arrow points target-ward</text>
+      </g>
+    </svg>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>75s.</b>
+    <ul>
+      <li>ZipCode is the hub — everything radiates from it.</li>
+      <li>NEIGHBORS is self-referential and bidirectional; enables multi-hop spatial queries.</li>
+      <li>35 orphan postcodes on LOCATED_IN_ZIP are legit data-quality issues outside NYC coverage — documented in the audit, not data loss.</li>
+      <li>Demographic is new in v2 (post-audit-review); matches the original capstone spec exactly.</li>
+    </ul>
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 07  ·  LIVE DEMO — Migration Pipeline
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide pipeline-demo" data-title="Live: Migration Pipeline">
+  <div class="eyebrow">Live Demo · 1 of 3</div>
+  <h1 class="section">Clean Neo4j → full graph in <em>~10 seconds</em>.</h1>
+
+  <div class="demo-sequence" aria-label="Demo choreography">
+    <div class="step tab-step">
+      <div class="num">1</div>
+      <div class="label">Neo4j Browser tab<small>MATCH (n) RETURN count(n) &nbsp;→&nbsp; <b>0</b></small></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step term-step">
+      <div class="num">2</div>
+      <div class="label">Terminal<small>python main.py migrate &nbsp;→&nbsp; <b>~8 s</b></small></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step tab-step">
+      <div class="num">3</div>
+      <div class="label">Neo4j Browser tab<small>↑ Enter &nbsp;→&nbsp; <b>11,183</b> · then LIMIT 100 for viz</small></div>
+    </div>
+  </div>
+
+  <div class="columns">
+    <div class="col">
+      <h3><span class="tag">Step 2a</span>Migrate PG → Neo4j</h3>
+      <pre class="term"><span class="p">$</span> python main.py migrate --clear \
+    --mapping-rules outputs/mapping_draft.yaml
+<span class="m">[INFO] Clearing Neo4j database...</span>
+<span class="m">[INFO] Setting up constraints + indexes</span>
+<span class="o">✓</span> HousingProject         8,604 nodes
+<span class="o">✓</span> ZipCode                  177 · Demographic 176
+<span class="o">✓</span> AffordabilityAnalysis    177 · RentBurden 2,225
+<span class="o">✓</span> LOCATED_IN_ZIP         6,851  (35 orphan skipped)
+<span class="o">✓</span> HAS_DEMOGRAPHICS         176  <span class="m">← new in v2</span>
+<span class="o">✓</span> HAS_AFFORDABILITY_DATA   177
+<span class="o">✓</span> IN_CENSUS_TRACT        5,426
+<span class="o">✓</span> NEIGHBORS                392 · CONTAINS_TRACT 4,050
+
+<b>✅ 11,359 nodes · 17,072 relationships</b>
+<span class="m">real  7.89s</span></pre>
+    </div>
+
+    <div class="col">
+      <h3><span class="tag">Step 2b</span>Verify integrity</h3>
+      <pre class="term"><span class="p">$</span> python main.py audit
+<span class="m">Node Count Verification</span>
+<span class="o">✓ MATCH</span>  all 5 labels, PG↔Neo4j parity
+
+<span class="m">Relationship Counts</span>
+<span class="o">✓ MATCH</span>  LOCATED_IN_ZIP    6,851 / 6,851
+<span class="o">✓ MATCH</span>  HAS_DEMOGRAPHICS    176 /   176
+<span class="o">✓ MATCH</span>  HAS_AFFORDABILITY   177 /   177
+<span class="o">✓ MATCH</span>  + 3 computed/spatial rels
+
+<span class="m">Data Sample Verification (20 rows per label)</span>
+<span class="o">✓ 100.0%</span>  on all 5 labels
+
+<span class="m">Issues</span>
+<span class="o">INFO</span>  LOCATED_IN_ZIP — 35 orphan FKs
+      (expected; postcodes outside NYC coverage)
+
+<b>Overall Status: PASS</b>
+<span class="m">real  1.32s</span></pre>
+    </div>
+  </div>
+
+  <div class="meta">
+    <b>Total:</b> migrate 7.89s + audit 1.32s ≈ <b>~10 seconds</b> for 11k nodes / 17k relationships /
+    100% integrity / sample-verified. Idempotent — safe to rerun.
+  </div>
+  <aside class="notes-content" hidden>
+    <b>Plan (3 min):</b>
+    <ul>
+      <li><b>Before the slide:</b> in a Neo4j Browser tab, run <code>MATCH (n) DETACH DELETE n</code> so the graph really is empty.</li>
+      <li><b>Step 1</b> — switch to Neo4j Browser tab, run <code>MATCH (n) RETURN count(n) AS total</code>. Big "0" on screen.</li>
+      <li><b>Step 2</b> — switch to terminal, run <code>python main.py migrate</code> then <code>audit</code>. ~10 s total.</li>
+      <li><b>Step 3</b> — back to Neo4j Browser tab. Up-arrow + Enter to rerun the count → <b>11,183</b>. Then <code>MATCH (n) RETURN n LIMIT 100</code> → colorful graph.</li>
+      <li>Emphasize: idempotent. Safe to rerun.</li>
+    </ul>
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 08  ·  AUDIT RESULT (detail)
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" data-title="Validation">
+  <div class="eyebrow">Validation</div>
+  <h1 class="section">Every relationship accounted for.</h1>
+
+  <table class="grid">
+    <thead>
+      <tr>
+        <th>Relationship</th><th>Source</th>
+        <th class="n">PostgreSQL</th><th class="n">Neo4j</th><th class="n">Orphans</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>LOCATED_IN_ZIP</code></td><td>FK</td>
+        <td class="n pg">6,851 expected</td><td class="n n4j">6,851</td>
+        <td class="n">35 (INFO)</td><td><span class="badge green">✓ MATCH</span></td></tr>
+      <tr class="win"><td><code>HAS_DEMOGRAPHICS</code></td><td>FK · new</td>
+        <td class="n pg">176</td><td class="n n4j">176</td>
+        <td class="n">0</td><td><span class="badge green">✓ MATCH</span></td></tr>
+      <tr><td><code>HAS_AFFORDABILITY_DATA</code></td><td>FK</td>
+        <td class="n pg">177</td><td class="n n4j">177</td>
+        <td class="n">0</td><td><span class="badge green">✓ MATCH</span></td></tr>
+      <tr><td><code>IN_CENSUS_TRACT</code></td><td>Computed</td>
+        <td class="n pg">N/A</td><td class="n n4j">5,426</td>
+        <td class="n">—</td><td><span class="badge green">✓ OK</span></td></tr>
+      <tr><td><code>NEIGHBORS</code></td><td>Spatial</td>
+        <td class="n pg">N/A</td><td class="n n4j">392</td>
+        <td class="n">—</td><td><span class="badge green">✓ OK</span></td></tr>
+      <tr><td><code>CONTAINS_TRACT</code></td><td>Spatial</td>
+        <td class="n pg">N/A</td><td class="n n4j">4,050</td>
+        <td class="n">—</td><td><span class="badge green">✓ OK</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="meta">
+    <b>On the "35 orphans":</b> these are housing projects whose <code>postcode</code>
+    falls outside NYC's 177-ZIP coverage (adjacent NJ/PA, PO boxes). MERGE correctly skips them.
+    Surfaced as <code>INFO</code>, not <code>WARN</code> — that distinction matters in an audit report.
+    <br><br>
+    <b>Honesty note:</b> early versions reported this as a WARN, which was misleading.
+    Fixing the audit semantics to distinguish <i>expected-skip</i> from <i>data loss</i> was
+    a deliberate change before final submission.
+  </div>
+  <aside class="notes-content" hidden>
+    <b>60s.</b> Pre-empt the "why 35 orphans" question. Then pivot to the meta-point: audit
+    semantics matter. An audit that cries wolf on expected behavior is worse than no audit.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 09  ·  LIVE DEMO — Text2Cypher
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide demo-slide" data-title="Live: Text2Cypher">
+  <div class="eyebrow">Live Demo · 2 of 3</div>
+  <h1>Natural language → Cypher → Graph</h1>
+
+  <div class="demo-frame">
+    <iframe src="http://localhost:8505/Ask" title="Streamlit Ask page"></iframe>
+  </div>
+  <div class="demo-hint">
+    <span>Three questions, escalating difficulty:
+      <b>"How many projects per borough?"</b> →
+      <b>"ZIPs with highest median age?"</b> →
+      <b>"Housing in ZIPs neighboring 10001, pre-1960"</b>
+    </span>
+    <span>If iframe doesn't load → open <span class="kbd">localhost:8505</span> manually</span>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>Plan (5 min):</b>
+    <ul>
+      <li>Question 1 (easy): count by borough — demonstrates single-label aggregation. ~2s.</li>
+      <li>Question 2 (medium, uses new Demographic): "Which ZIP codes have the oldest median age?" — demonstrates HAS_DEMOGRAPHICS and shows that the new schema is live.</li>
+      <li>Question 3 (hard, var-path): "Find housing projects in ZIP codes neighboring 10001 built before 1960" — demonstrates spatial + temporal filter combining 3 labels.</li>
+      <li>Show the Explain panel after each answer — that's the "trust" layer.</li>
+      <li>If iframe fails: switch to Chrome tab with localhost:8505 pre-loaded.</li>
+    </ul>
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 10  ·  TEXT2CYPHER ACCURACY
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide chart-slide" data-title="Text2Cypher Accuracy">
+  <div class="eyebrow">Benchmarking the NL Interface</div>
+  <h1 class="section">Text2Cypher: <em>95%</em> on a 20-question benchmark.</h1>
+
+  <div class="chart-container" style="gap:3rem;display:flex;align-items:center">
+    <!-- donut chart -->
+    <svg viewBox="0 0 260 260" width="340" height="340" xmlns="http://www.w3.org/2000/svg" aria-label="95% accuracy donut">
+      <!-- background ring -->
+      <circle cx="130" cy="130" r="100" stroke="#e2e8f0" stroke-width="24" fill="none"/>
+      <!-- easy (6/6) · 0° to 108° (30% of circle) -->
+      <circle cx="130" cy="130" r="100" stroke="#059669" stroke-width="24" fill="none"
+              stroke-dasharray="188 628" stroke-dashoffset="0"
+              transform="rotate(-90 130 130)" stroke-linecap="butt"/>
+      <!-- medium (7/7) · 108° to 234° (35% of circle) -->
+      <circle cx="130" cy="130" r="100" stroke="#10b981" stroke-width="24" fill="none"
+              stroke-dasharray="220 628" stroke-dashoffset="-188"
+              transform="rotate(-90 130 130)" stroke-linecap="butt"/>
+      <!-- hard passed (6/7) · 234° to 342° (30% of circle) -->
+      <circle cx="130" cy="130" r="100" stroke="#34d399" stroke-width="24" fill="none"
+              stroke-dasharray="188 628" stroke-dashoffset="-408"
+              transform="rotate(-90 130 130)" stroke-linecap="butt"/>
+      <!-- hard failed (1/7) · 342° to 360° (5% of circle) -->
+      <circle cx="130" cy="130" r="100" stroke="#f59e0b" stroke-width="24" fill="none"
+              stroke-dasharray="32 628" stroke-dashoffset="-596"
+              transform="rotate(-90 130 130)" stroke-linecap="butt"/>
+      <text x="130" y="122" text-anchor="middle" font-size="44" font-weight="800" fill="#0f172a">95%</text>
+      <text x="130" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="#64748b">19 / 20</text>
+      <text x="130" y="170" text-anchor="middle" font-size="10" fill="#94a3b8">vs 75% spec target</text>
+    </svg>
+
+    <div style="flex:1;max-width:560px">
+      <table class="grid" style="margin-top:0">
+        <thead><tr><th>Difficulty</th><th class="n">Passed</th><th class="n">Accuracy</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><b>Easy</b> (Q1–6)</td><td class="n">6 / 6</td><td class="n" style="color:#059669;font-weight:700">100%</td><td>single-label aggregation, filters</td></tr>
+          <tr><td><b>Medium</b> (Q7–13)</td><td class="n">7 / 7</td><td class="n" style="color:#10b981;font-weight:700">100%</td><td>1–2 hop traversals, boroughs</td></tr>
+          <tr><td><b>Hard</b> (Q14–20)</td><td class="n">6 / 7</td><td class="n" style="color:#f59e0b;font-weight:700">86%</td><td>multi-hop, spatial, variable-length path</td></tr>
+          <tr style="border-top:2px solid #0f172a"><td><b>Overall</b></td><td class="n"><b>19 / 20</b></td><td class="n" style="color:#2563eb;font-weight:800">95%</td><td>Target: ≥75% (spec §"Specific Objectives")</td></tr>
+        </tbody>
+      </table>
+      <div class="meta" style="margin-top:1rem">
+        <b>Grading rubric per question (4 criteria):</b>
+        syntax valid · returns results · row count matches ground truth · top row matches.
+        <br>
+        <b>Only failure:</b> Q19 omitted a <code>LIMIT 20</code> clause → 100 rows
+        returned where 20 was ground truth.
+      </div>
+    </div>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>90s.</b> Key framing: the spec asked for 75%; I delivered 95%. The rubric was designed
+    <i>before</i> running the benchmark — not fitted to results. The one failure is
+    instructive, not embarrassing: the model got the shape of the query right but missed
+    a formatting detail.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 11  ·  LIVE DEMO — Explore / Graph Viz
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide demo-slide" data-title="Live: Graph Visualization">
+  <div class="eyebrow">Live Demo · 3 of 3</div>
+  <h1>From query to picture — variable-length paths, visualized</h1>
+
+  <div class="demo-frame">
+    <iframe src="http://localhost:8505/Explore" title="Streamlit Explore page"></iframe>
+  </div>
+  <div class="demo-hint">
+    <span>
+      Query to run:
+      <code style="background:#0f172a;color:#e2e8f0;padding:.15rem .5rem;border-radius:4px;font-size:.85rem">
+        MATCH path = (z:ZipCode {zip_code:'10001'})-[:NEIGHBORS*0..2]-(n) RETURN path LIMIT 50
+      </code>
+    </span>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>Plan (2 min):</b> Paste the variable-length path query, click Graph View tab,
+    watch pyvis render the network. The story: this same query in SQL would be a
+    recursive CTE — and this is what drives the 37× speedup we're about to see.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 12  ·  PERFORMANCE CATEGORY BREAKDOWN
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide chart-slide" data-title="Performance by Category">
+  <div class="eyebrow">Performance · PostgreSQL vs Neo4j · 10 queries</div>
+  <h1 class="section">Right tool for the right query shape.</h1>
+
+  <div class="chart-container">
+    <svg viewBox="0 0 1100 430" xmlns="http://www.w3.org/2000/svg" aria-label="Benchmark by category">
+      <!-- title axis -->
+      <text x="50" y="25" font-size="11" fill="#64748b" font-weight="600">Median speedup (Neo4j / PG) · log scale · 2 queries per category</text>
+
+      <!-- grid lines -->
+      <g stroke="#e2e8f0" stroke-width="1">
+        <line x1="280" y1="60"  x2="280" y2="380"/>
+        <line x1="460" y1="60"  x2="460" y2="380"/>
+        <line x1="640" y1="60"  x2="640" y2="380"/>
+        <line x1="820" y1="60"  x2="820" y2="380"/>
+      </g>
+      <!-- axis reference: 1× line -->
+      <line x1="460" y1="60" x2="460" y2="380" stroke="#0f172a" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="460" y="55" font-size="10" font-weight="700" fill="#0f172a" text-anchor="middle">1×  (tie)</text>
+
+      <!-- scale tick labels -->
+      <text x="100"  y="395" font-size="10" fill="#94a3b8">0.1×</text>
+      <text x="280"  y="395" font-size="10" fill="#94a3b8" text-anchor="middle">0.5×</text>
+      <text x="640"  y="395" font-size="10" fill="#94a3b8" text-anchor="middle">5×</text>
+      <text x="820"  y="395" font-size="10" fill="#94a3b8" text-anchor="middle">10×</text>
+      <text x="1000" y="395" font-size="10" fill="#94a3b8" text-anchor="middle">50×</text>
+      <!-- side captions (on their own row, below ticks) -->
+      <text x="280" y="415" font-size="11" fill="#336791" text-anchor="middle" font-weight="700">◄ PG wins</text>
+      <text x="820" y="415" font-size="11" fill="#4581c3" text-anchor="middle" font-weight="700">Neo4j wins ►</text>
+
+      <!-- bars: 5 categories -->
+      <!-- x-axis: log scale from 0.1 to 50, range 60→1040 (spans 980 units) -->
+      <!-- position for value v: 60 + 980 * (log(v) - log(0.1)) / (log(50) - log(0.1)) -->
+      <!-- log(0.1)=-1, log(50)≈1.7 → span = 2.7 -->
+      <!-- simple formula: x = 60 + 980/2.7 * (log10(v) + 1)   -->
+      <!-- 0.14× -->
+      <g>
+        <text x="190" y="90" font-size="13" font-weight="700" fill="#0f172a">simple</text>
+        <text x="190" y="106" font-size="10" fill="#64748b">aggregation on indexed cols</text>
+        <rect x="365" y="80" width="95" height="30" fill="#336791" opacity=".85"/>
+        <text x="355" y="99" font-size="11" font-weight="700" text-anchor="end" fill="#ffffff">0.14×</text>
+      </g>
+      <!-- 1.02× -->
+      <g>
+        <text x="190" y="150" font-size="13" font-weight="700" fill="#0f172a">1-hop</text>
+        <text x="190" y="166" font-size="10" fill="#64748b">single FK join</text>
+        <rect x="460" y="140" width="8" height="30" fill="#64748b"/>
+        <text x="485" y="159" font-size="11" font-weight="700" fill="#0f172a">1.02×</text>
+      </g>
+      <!-- 0.14× -->
+      <g>
+        <text x="190" y="210" font-size="13" font-weight="700" fill="#0f172a">2-hop</text>
+        <text x="190" y="226" font-size="10" fill="#64748b">two-JOIN / two-MATCH</text>
+        <rect x="365" y="200" width="95" height="30" fill="#336791" opacity=".85"/>
+        <text x="355" y="219" font-size="11" font-weight="700" text-anchor="end" fill="#ffffff">0.14×</text>
+      </g>
+      <!-- 0.40× -->
+      <g>
+        <text x="190" y="270" font-size="13" font-weight="700" fill="#0f172a">neighbor</text>
+        <text x="190" y="286" font-size="10" fill="#64748b">ST_Touches on-the-fly</text>
+        <rect x="400" y="260" width="60" height="30" fill="#336791" opacity=".85"/>
+        <text x="390" y="279" font-size="11" font-weight="700" text-anchor="end" fill="#ffffff">0.40×</text>
+      </g>
+      <!-- 19.6× -->
+      <g>
+        <text x="190" y="330" font-size="13" font-weight="700" fill="#0f172a">var-path</text>
+        <text x="190" y="346" font-size="10" fill="#64748b">recursive CTE vs *1..n</text>
+        <rect x="460" y="320" width="514" height="30" fill="#4581c3"/>
+        <text x="984" y="339" font-size="12" font-weight="800" text-anchor="end" fill="#ffffff">19.6×</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="meta">
+    <b>Read:</b> the dashed line is parity. Bars right = Neo4j faster; bars left = PG faster.
+    Flat queries over indexed columns are PostgreSQL's home turf — we don't claim otherwise.
+    <b>Path-shaped queries are Neo4j's home turf, and the advantage grows with hop depth.</b>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>90s. The honesty move:</b> I could have picked 10 queries where Neo4j wins.
+    I chose 10 that span both home turfs. The point of the architecture isn't that graph
+    is always faster — it's that <i>the right query shape matches the right engine</i>.
+    var-path is what Neo4j is for. That's why the next slide zooms in on Q9.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 13  ·  HERO CHART — Q9
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide chart-slide" data-title="The Hero Query">
+  <div class="eyebrow">The query that defines the architecture</div>
+  <h1 class="section">"All ZIPs within 2 hops of 10001" — <em>37.7×</em> faster.</h1>
+
+  <div class="chart-container" style="display:flex;gap:2rem">
+    <!-- big horizontal bar compare -->
+    <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" style="flex:1">
+      <!-- PG bar -->
+      <text x="20" y="45" font-size="14" font-weight="700" fill="#336791">PostgreSQL</text>
+      <text x="20" y="62" font-size="10" fill="#64748b">21 lines · recursive CTE · ST_Touches self-join</text>
+      <rect x="20" y="78" width="720" height="48" fill="#336791" opacity=".85" rx="4"/>
+      <text x="735" y="108" font-size="18" font-weight="800" text-anchor="end" fill="#ffffff">174.4 ms</text>
+
+      <!-- Neo4j bar -->
+      <text x="20" y="175" font-size="14" font-weight="700" fill="#4581c3">Neo4j</text>
+      <text x="20" y="192" font-size="10" fill="#64748b">4 lines · <tspan font-family="monospace" fill="#0f172a">-[:NEIGHBORS*0..2]-</tspan> · one MATCH</text>
+      <rect x="20" y="208" width="19" height="48" fill="#4581c3" rx="4"/>
+      <text x="48" y="238" font-size="18" font-weight="800" fill="#4581c3">4.6 ms</text>
+
+      <!-- speedup arrow badge -->
+      <g transform="translate(510,260)">
+        <rect x="0" y="0" width="270" height="56" rx="28" fill="#2563eb"/>
+        <text x="24" y="35" font-size="26" font-weight="800" fill="#ffffff">37.7×</text>
+        <text x="110" y="27" font-size="11" fill="#bfdbfe">faster</text>
+        <text x="110" y="43" font-size="10" fill="#bfdbfe">5× less code, too</text>
+      </g>
+    </svg>
+
+    <div style="width:300px">
+      <div class="badge accent">Why graph wins here</div>
+      <ul class="bullets" style="margin-top:1rem;font-size:.92rem">
+        <li><b>Path-shaped query</b> — expressed natively as a pattern, not approximated by joins.</li>
+        <li><b>Pre-computed edges</b> — NEIGHBORS was materialized at migration time; query is O(edges), not O(n²).</li>
+        <li><b>No plan blowup</b> — depth is a parameter, not a schema change. Extending to 3-hop is swapping <code>*0..2</code> → <code>*0..3</code>.</li>
+        <li><b>Readable</b> — 4 lines a domain expert can review; 21 lines of recursive SQL, most can't.</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>90s. THIS IS THE MONEY SLIDE.</b>
+    <ul>
+      <li>Same question, same data, same machine, 10 warm-up runs, median of 10 timed runs.</li>
+      <li>Point to the code gap: 21 lines vs 4. Who reviews which at 2am?</li>
+      <li>Pre-empt "is that cherry-picked?" — it's Q9 in a public benchmark report committed to the repo. Q10 (also var-path) wins 1.6× — less dramatic but same pattern.</li>
+    </ul>
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 14  ·  GENERALIZATION
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" data-title="Generalizable">
+  <div class="eyebrow">Live Demo · 4 of 4 · Not just NOAH</div>
+  <h1 class="section">Three more databases. <em>Same engine.</em> Under 4 seconds each.</h1>
+
+  <div class="agnostic-grid">
+    <table class="grid agnostic-table">
+      <thead>
+        <tr>
+          <th>Dataset</th><th>Domain</th>
+          <th class="n">Tables</th><th class="n">Nodes</th><th class="n">Edges</th>
+          <th class="n">Migrate</th><th class="n">Orphans</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="reference-row">
+          <td><code>noah</code></td><td>NYC housing · PostGIS</td>
+          <td class="n">5</td><td class="n">11,359</td><td class="n">17,072</td>
+          <td class="n">7.89 s</td><td class="n">35 INFO*</td>
+        </tr>
+        <tr>
+          <td><b><code>chinook</code></b></td><td>Music store (Apple-iTunes shape)</td>
+          <td class="n">11</td><td class="n">6,892</td><td class="n">24,529</td>
+          <td class="n win">2.71 s</td><td class="n">0</td>
+        </tr>
+        <tr>
+          <td><b><code>northwind</code></b></td><td>Wholesale orders (classic B2B)</td>
+          <td class="n">8</td><td class="n">1,050</td><td class="n">4,807</td>
+          <td class="n win">1.52 s</td><td class="n">0</td>
+        </tr>
+        <tr>
+          <td><b><code>pagila</code></b></td><td>DVD rental (Postgres official)</td>
+          <td class="n">12</td><td class="n">25,758</td><td class="n">72,024</td>
+          <td class="n win">3.36 s</td><td class="n">0</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="agnostic-what">
+      <div class="what-card">
+        <div class="tag">chinook</div>
+        <b>Self-join recursion</b><br>
+        <code>Employee.reports_to</code> becomes a <code>REPORTS_TO</code> edge.
+        Org-chart traversal in Cypher: <code>*0..n</code>.
+      </div>
+      <div class="what-card">
+        <div class="tag">northwind</div>
+        <b>Composite-PK junction</b><br>
+        <code>order_details</code> collapsed into
+        <code>(Order)-[CONTAINS&nbsp;{qty,price}]-&gt;(Product)</code>.
+      </div>
+      <div class="what-card">
+        <div class="tag">pagila</div>
+        <b>Layered geography</b><br>
+        <code>Address→City→Country</code> plus two junctions
+        (<code>film_actor</code>, <code>film_category</code>).
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-live-bar">
+    <span class="eyebrow" style="margin:0">Live on stage:</span>
+    <code>bash scripts/demo_agnostic.sh all</code>
+    <span style="color:var(--muted);font-size:.85rem">→ all three, ~8 s total, points at separate Neo4j on :7688</span>
+  </div>
+
+  <div class="meta" style="margin-top:.6rem;font-size:.82rem">
+    * NOAH's 35 are legit out-of-NYC postcodes (see slide 8). Every FK in the 3 new
+    datasets landed. <b>Same <code>src/noah_converter/</code> code — three ~200-line
+    YAML files were the only input.</b>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>2.5 min.</b>
+    <ul>
+      <li>Open a fresh terminal split, run <code>bash scripts/demo_agnostic.sh all</code>.
+          You get three timed blocks scrolling by in ~8 s. Announce each one as it starts.</li>
+      <li>After the script ends, switch to the <b>demo-Neo4j tab on http://localhost:7475</b>
+          and run <code>MATCH (n) RETURN labels(n), count(n) LIMIT 20</code> to show the
+          Pagila graph populated (last one migrated wins the slot).</li>
+      <li>Key message: the engine did not know this was Pagila. The YAML told it.
+          Point at the "3 tables → 11 tables → 12 tables" gradient — it scales.</li>
+    </ul>
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 15  ·  BUSINESS VALUE
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" data-title="Business Value">
+  <div class="eyebrow">Why this matters beyond the capstone</div>
+  <h1 class="section">Three audiences, one tool.</h1>
+
+  <div class="papers">
+    <div class="paper">
+      <div class="tag">Audience 1 · Operators</div>
+      <div class="title">Database modernization</div>
+      <div class="contribution">
+        Legacy RDBMS → graph migrations are 2–6 month consulting engagements.
+        A config-driven bot with LLM-assisted mapping cuts the initial
+        schema-translation phase from weeks to hours.
+        <br><br>
+        <b>Direct buyer:</b> digital transformation teams at mid-sized enterprises
+        with connected data (fraud graphs, recommendation systems, identity).
+      </div>
+    </div>
+    <div class="paper">
+      <div class="tag">Audience 2 · Domain Users</div>
+      <div class="title">Natural-language data access</div>
+      <div class="contribution">
+        Policy analysts, urban planners, NGO staff routinely need to answer
+        questions like <i>"which neighborhoods at rent-burden risk have aging
+        housing stock?"</i> Today that requires a data engineer.
+        <br><br>
+        Text2Cypher + this graph makes it a sentence in English.
+        95% accuracy on a real benchmark — defensible for decision support,
+        not just demos.
+      </div>
+    </div>
+    <div class="paper">
+      <div class="tag">Audience 3 · Educators</div>
+      <div class="title">Classroom case study</div>
+      <div class="contribution">
+        Advanced Business Informatics courses teach ETL, schema design, query
+        optimization, LLM integration in isolation. This project is one
+        cohesive case that threads all four.
+        <br><br>
+        <b>Deliverable:</b> Jupyter notebook with 3 graded lab exercises
+        (in <code>notebooks/03_graph_vs_sql_tutorial.ipynb</code>).
+      </div>
+    </div>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>75s.</b> Three audiences, not one. Operators buy it, domain users use it,
+    educators teach from it. If the prof asks which audience matters most —
+    for Digital Forge Lab specifically, it's operators. But the research/teaching
+    angle is why it's a capstone and not just a consulting deliverable.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 16  ·  LIMITATIONS
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" data-title="Limitations">
+  <div class="eyebrow">Honest inventory</div>
+  <h1 class="section">What this project <em>doesn't</em> claim to solve.</h1>
+
+  <ul class="lessons">
+    <li>
+      <span class="tag">Data completeness</span>
+      <div class="body">
+        <b>35 housing projects carry postcodes outside NYC's 177-ZIP set</b> (adjacent NJ/PA,
+        PO boxes). Documented in audit; no relationship created. Reasonable engineering call —
+        silently inventing a ZIP node for them would be worse.
+      </div>
+    </li>
+    <li>
+      <span class="tag">Data substitution</span>
+      <div class="body">
+        <b>Two AffordabilityAnalysis properties are null</b> (<code>median_rent_usd</code>,
+        <code>rent_to_income_ratio</code>): original spec called for StreetEasy's proprietary
+        feed. Substituted ACS 2022 B25070 rent-burden rate after sponsor sign-off — equivalent
+        policy signal, publicly available.
+      </div>
+    </li>
+    <li>
+      <span class="tag">Performance scope</span>
+      <div class="body">
+        <b>Neo4j wins on path queries, not on flat aggregations.</b> I don't claim "Neo4j is
+        faster than PostgreSQL" — that framing is wrong. Tested at NOAH scale (~10k nodes);
+        the gap scales superlinearly with hop depth and graph density. At 100M-node scale the
+        story would be different.
+      </div>
+    </li>
+    <li>
+      <span class="tag">LLM dependencies</span>
+      <div class="body">
+        <b>Text2Cypher requires an Anthropic or OpenAI API key.</b> Offline inference via local
+        models (Llama, Qwen) would be next — schema-aware prompt is provider-agnostic, so it's
+        a 1-week swap.
+      </div>
+    </li>
+  </ul>
+  <aside class="notes-content" hidden>
+    <b>60s.</b> Preempt every critique. Audit, data, perf, LLM — name the boundary before
+    they do. This slide earns more credibility than any "results" slide.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 17  ·  LESSONS LEARNED
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide" data-title="Lessons">
+  <div class="eyebrow">Three things I'd tell next semester's cohort</div>
+  <h1 class="section">Lessons learned.</h1>
+
+  <ul class="lessons">
+    <li>
+      <span class="tag">1 · Config &gt; Code</span>
+      <div class="body">
+        Early versions hardcoded NOAH table names everywhere. Moving to a single
+        <code>mapping_rules.yaml</code> was the single biggest quality jump — it turned
+        a one-off script into a reusable tool. <b>Every domain-specific string you
+        delete is a future demo you enable.</b>
+      </div>
+    </li>
+    <li>
+      <span class="tag">2 · Benchmarks tell the story</span>
+      <div class="body">
+        My first performance comparison had 8 queries, 7 of which were flat aggregations.
+        Neo4j lost 7 of 8 and I wrote "1.6× speedup" as the headline, which was misleading
+        cherry-picking. Rebuilding around <b>five categories — 2 queries each, spanning PG
+        home turf and Neo4j home turf</b> — turned a defensive story into an honest one
+        with a genuine 37× hero case.
+      </div>
+    </li>
+    <li>
+      <span class="tag">3 · LLM schema interpretation is a force multiplier</span>
+      <div class="body">
+        The first NOAH mapping took me ~6 hours of manual yaml writing. The second pass with
+        <code>main.py interpret</code> (Claude reads <code>pg_catalog</code>, returns a draft
+        yaml with confidence scores) took 30 seconds + 45 minutes of review. For Chinook,
+        that workflow converged in 15 minutes end-to-end. <b>It's not about replacing the
+        engineer, it's about erasing the boring first 80%.</b>
+      </div>
+    </li>
+  </ul>
+  <aside class="notes-content" hidden>
+    <b>75s.</b> End with lessons, not with results. Shows reflection, shows growth.
+    The middle lesson is a quiet confession — that's the credibility move.
+  </aside>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SLIDE 18  ·  CLOSE / Q&A
+     ══════════════════════════════════════════════════════════════ -->
+<section class="slide title-slide" data-title="Thank you">
+  <div class="eyebrow">Thank you</div>
+  <h1 class="title">Questions?</h1>
+  <h2 class="subtitle">
+    Repository, documentation, capstone report, and full benchmark data
+    are all public and reproducible from the README quick-start.
+  </h2>
+
+  <div class="meta" style="margin-top:3rem;font-size:1rem">
+    <div>
+      <b>Code:</b>
+      <a href="https://github.com/gitzhen0/noah-postgres-to-neo4j" style="color:var(--accent);text-decoration:none;font-family:'SF Mono',monospace;font-size:.95rem">
+        github.com/gitzhen0/noah-postgres-to-neo4j
+      </a>
+    </div>
+    <div style="margin-top:.5rem"><b>Capstone report:</b>  <code style="font-family:'SF Mono',monospace;color:var(--ink)">docs/CAPSTONE_REPORT.pdf</code></div>
+    <div style="margin-top:.5rem"><b>Clean-env reproduction:</b>  <code style="font-family:'SF Mono',monospace;color:var(--ink)">docker compose up &amp;&amp; python main.py migrate</code></div>
+    <div style="margin-top:1.5rem;color:var(--muted)">
+      Zhen Yang &nbsp;·&nbsp; NYU SPS MASY Capstone · Spring 2026
+      &nbsp;·&nbsp; Advisor Dr. Andres Fortino &nbsp;·&nbsp; Sponsor: The Digital Forge Lab
+    </div>
+  </div>
+  <aside class="notes-content" hidden>
+    <b>Closing (30s).</b> Don't read the slide. Just say: "That's the project.
+    The repo is up, everything in the deck is reproducible from the quick-start in
+    the README. Happy to take questions."
+  </aside>
+</section>
+
+</div><!-- /.deck -->
+
+<!-- chrome -->
+<div class="chrome">
+  <div class="brand">NOAH · KG Conversion Bot · Capstone Final</div>
+  <div class="counter" id="counter">1 / 18</div>
+</div>
+
+<!-- overview -->
+<div class="overview" id="overview"><div class="overview-grid" id="overview-grid"></div></div>
+
+<!-- notes -->
+<aside class="notes" id="notes">
+  <h4>Speaker notes</h4>
+  <div class="content" id="notes-content">No notes for this slide.</div>
+</aside>
+
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const counterEl = document.getElementById('counter');
+  const progressEl = document.querySelector('.progress');
+  const overview = document.getElementById('overview');
+  const overviewGrid = document.getElementById('overview-grid');
+  const notesEl = document.getElementById('notes');
+  const notesContent = document.getElementById('notes-content');
+
+  let i = 0;
+
+  const render = () => {
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    counterEl.textContent = `${i + 1} / ${slides.length}`;
+    progressEl.style.width = `${((i + 1) / slides.length) * 100}%`;
+    const notes = slides[i].querySelector('.notes-content');
+    notesContent.innerHTML = notes ? notes.innerHTML : '<em>No notes for this slide.</em>';
+    // persist
+    try { localStorage.setItem('noah-deck-pos', i); } catch {}
+    // update hash
+    history.replaceState(null, '', `#${i + 1}`);
+  };
+
+  const goto = (idx) => {
+    i = Math.max(0, Math.min(slides.length - 1, idx));
+    render();
+  };
+
+  // build overview once
+  slides.forEach((s, idx) => {
+    const title = s.dataset.title || `Slide ${idx + 1}`;
+    const card = document.createElement('div');
+    card.className = 'overview-item';
+    card.innerHTML = `<div class="ov-n">${idx + 1}</div><div class="ov-t">${title}</div>`;
+    card.addEventListener('click', () => {
+      goto(idx);
+      overview.classList.remove('on');
+    });
+    overviewGrid.appendChild(card);
+  });
+
+  // keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    // if typing in an input, skip
+    if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'PageDown':
+      case ' ':
+        e.preventDefault();
+        goto(i + 1); break;
+      case 'ArrowLeft':
+      case 'PageUp':
+        e.preventDefault();
+        goto(i - 1); break;
+      case 'Home':  goto(0); break;
+      case 'End':   goto(slides.length - 1); break;
+      case 'Escape':
+        overview.classList.toggle('on');
+        break;
+      case 'f': case 'F':
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+        else document.exitFullscreen().catch(()=>{});
+        break;
+      case 'n': case 'N':
+      case 's': case 'S':
+        notesEl.classList.toggle('on');
+        break;
+      case '?':
+      case 'h': case 'H':
+        alert(`Keys:
+  →  Space  PgDn   next
+  ←  PgUp           prev
+  Esc              overview
+  F                fullscreen
+  N  or  S         speaker notes
+  Home / End       first / last slide`);
+        break;
+    }
+  });
+
+  // click for next (only when not on iframe)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('iframe, a, .overview, .notes, .controls')) return;
+    if (e.target.closest('.demo-frame')) return; // protect iframes
+    // ignore clicks in interactive elements
+    if (e.target.closest('pre')) return;
+  });
+
+  // resume from hash or localStorage
+  const fromHash = parseInt(location.hash.slice(1), 10);
+  if (!isNaN(fromHash)) i = Math.max(0, Math.min(slides.length - 1, fromHash - 1));
+  else {
+    try {
+      const saved = parseInt(localStorage.getItem('noah-deck-pos'), 10);
+      if (!isNaN(saved)) i = Math.max(0, Math.min(slides.length - 1, saved));
+    } catch {}
+  }
+  render();
+})();
+</script>
+</body>
+</html>
