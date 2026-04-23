@@ -64,3 +64,9 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Claude CLI local settings
+.claude/
+
+# Public SQL dumps for agnostic demo (re-downloadable from upstream repos)
+datasets/dumps/

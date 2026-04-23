@@ -270,19 +270,27 @@ SELECT
     'ZIP Neighbors',
     COUNT(*),
     pg_size_pretty(pg_total_relation_size('zip_neighbors'))
-FROM zip_neighbors
-UNION ALL
-SELECT
-    'Tract-ZIP Overlay',
-    COALESCE((SELECT COUNT(*) FROM tract_zip_overlay), 0),
-    COALESCE(pg_size_pretty(pg_total_relation_size('tract_zip_overlay')), 'N/A')
-WHERE EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'tract_zip_overlay')
-UNION ALL
-SELECT
-    'Project Validation',
-    COALESCE((SELECT COUNT(*) FROM project_zip_validation), 0),
-    COALESCE(pg_size_pretty(pg_total_relation_size('project_zip_validation')), 'N/A')
-WHERE EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'project_zip_validation');
+FROM zip_neighbors;
+
+-- Optional tables. Postgres resolves all UNION branches at parse time, so
+-- guarding these with WHERE EXISTS still errors when the tables are absent.
+-- Emit them dynamically so the MVP schema (no rent_burden yet) works too.
+DO $$
+DECLARE
+    cnt    BIGINT;
+    sz     TEXT;
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'tract_zip_overlay') THEN
+        EXECUTE 'SELECT COUNT(*), pg_size_pretty(pg_total_relation_size(''tract_zip_overlay''))
+                 FROM tract_zip_overlay' INTO cnt, sz;
+        RAISE NOTICE '   Tract-ZIP Overlay: % rows, %', cnt, sz;
+    END IF;
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'project_zip_validation') THEN
+        EXECUTE 'SELECT COUNT(*), pg_size_pretty(pg_total_relation_size(''project_zip_validation''))
+                 FROM project_zip_validation' INTO cnt, sz;
+        RAISE NOTICE '   Project Validation: % rows, %', cnt, sz;
+    END IF;
+END $$;
 
 \echo ''
 \echo '✅ Spatial relationships precomputation complete!'

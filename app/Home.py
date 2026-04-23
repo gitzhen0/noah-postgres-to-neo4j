@@ -56,18 +56,20 @@ total_rels = sum(
         "IN_CENSUS_TRACT",
         "CONTAINS_TRACT",
         "HAS_AFFORDABILITY_DATA",
+        "HAS_DEMOGRAPHICS",
     ]
 )
 
 stat_items = [
     ("Housing Projects", stats.get("n_HousingProject", "—"), "buildings across 5 boroughs"),
     ("ZIP Codes",        stats.get("n_ZipCode", "—"),         "NYC postal boundaries"),
+    ("Demographics",     stats.get("n_Demographic", "—"),     "ACS 2022 population + age"),
     ("Census Tracts",   stats.get("n_RentBurden", "—"),       "tract-level rent burden"),
     ("Affordability",   stats.get("n_AffordabilityAnalysis", "—"), "ZIP income + rent data"),
     ("Connections",     total_rels or "—",                    "graph relationships"),
 ]
 
-cols = st.columns(5)
+cols = st.columns(6)
 for col, (label, value, hint) in zip(cols, stat_items):
     with col:
         display = f"{value:,}" if isinstance(value, int) else str(value)

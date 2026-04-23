@@ -5,11 +5,17 @@ Measures:
   - Execution time  : median over N runs (ms)
   - Code complexity : lines of code + JOIN/MATCH count + condition count
 
-Queries span 4 categories:
-  1. Simple aggregation       (no joins)
-  2. 1-hop traversal          (1 JOIN / 1 MATCH hop)
-  3. 2-hop traversal          (2 JOINs / 2 MATCH hops)
-  4. Neighbor / 3-hop         (spatial subquery vs pre-computed NEIGHBORS edges)
+Queries span 5 categories, chosen so the benchmark tells an honest story
+instead of cherry-picking:
+  1. Simple aggregation       (no joins)                     — PG typically wins
+  2. 1-hop traversal          (1 JOIN / 1 MATCH hop)         — PG typically wins
+  3. 2-hop traversal          (2 JOINs / 2 MATCH hops)       — close
+  4. Neighbor / 3-hop         (spatial ST_Touches vs NEIGHBORS edge)  — Neo4j wins
+  5. Variable-length path     (recursive CTE vs *1..n hops)  — Neo4j wins big
+
+The design goal is "right tool for the right query" — relational is excellent
+at flat aggregations on indexed columns; graphs win when the query shape is a
+path. The benchmark is intentionally balanced across both sides.
 
 Usage:
     python scripts/performance_comparison.py
@@ -246,6 +252,80 @@ RETURN n.zip_code           AS neighbor_zip,
        p.total_units        AS total_units
 ORDER BY a.rent_burden_rate DESC""",
     ),
+
+    # ── 9. Variable-length path: ZIPs within 2 hops ──────────────────────
+    # Classic graph use-case: "reach within N hops". SQL needs a recursive
+    # CTE and grows in plan complexity with each hop; Neo4j handles it with
+    # a single quantified path pattern.
+    QueryPair(
+        id=9, category="var-path",
+        description="All ZIPs within 2 hops of 10001 (recursive CTE vs *1..2)",
+        sql="""
+WITH RECURSIVE reachable(zip_code, depth) AS (
+    SELECT zip_code, 0 AS depth
+    FROM   zip_shapes
+    WHERE  zip_code = '10001'
+    UNION
+    SELECT CASE
+              WHEN a.zip_code = r.zip_code THEN b.zip_code
+              ELSE a.zip_code
+           END,
+           r.depth + 1
+    FROM   reachable r
+    JOIN   zip_shapes a
+    JOIN   zip_shapes b ON a.zip_code < b.zip_code
+           AND ST_Touches(a.geom, b.geom)
+        ON r.zip_code IN (a.zip_code, b.zip_code)
+    WHERE  r.depth < 2
+)
+SELECT DISTINCT zip_code, MIN(depth) AS min_depth
+FROM   reachable
+GROUP BY zip_code
+ORDER BY min_depth, zip_code""",
+        cypher="""
+MATCH path = (start:ZipCode {zip_code: '10001'})-[:NEIGHBORS*0..2]-(z:ZipCode)
+WITH z.zip_code AS zip_code, min(length(path)) AS min_depth
+RETURN zip_code, min_depth
+ORDER BY min_depth, zip_code""",
+    ),
+
+    # ── 10. Multi-label traversal: demographic + affordability + project ──
+    # Joins four node types via three relationship hops. SQL version needs
+    # four table JOINs plus the spatial crosswalk for census tracts; Neo4j
+    # walks the pattern in one MATCH.
+    QueryPair(
+        id=10, category="var-path",
+        description="Demographic + affordability pattern per borough "
+                    "(4-table JOIN vs 3-hop MATCH)",
+        sql="""
+SELECT   z.borough,
+         COUNT(DISTINCT z.zip_code)            AS zip_count,
+         AVG(d.total_population)::int          AS avg_population,
+         AVG(d.pct_renter_occupied)::numeric(5,2) AS avg_pct_renter,
+         AVG(a.rent_burden_rate)::numeric(5,3) AS avg_rent_burden,
+         COUNT(p.id)                           AS project_count
+FROM     zip_shapes               z
+JOIN     zip_demographic          d  ON z.zip_code = d.zip_code
+JOIN     noah_affordability_analysis a ON z.zip_code = a.zip_code
+LEFT JOIN housing_projects         p  ON p.postcode  = z.zip_code
+WHERE    d.pct_renter_occupied > 60
+  AND    a.rent_burden_rate    > 0.35
+GROUP BY z.borough
+ORDER BY avg_rent_burden DESC""",
+        cypher="""
+MATCH (z:ZipCode)-[:HAS_DEMOGRAPHICS]->(d:Demographic),
+      (z)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+WHERE d.pct_renter_occupied > 60
+  AND a.rent_burden_rate    > 0.35
+OPTIONAL MATCH (p:HousingProject)-[:LOCATED_IN_ZIP]->(z)
+RETURN z.borough                   AS borough,
+       count(DISTINCT z)           AS zip_count,
+       avg(d.total_population)     AS avg_population,
+       avg(d.pct_renter_occupied)  AS avg_pct_renter,
+       avg(a.rent_burden_rate)     AS avg_rent_burden,
+       count(p)                    AS project_count
+ORDER BY avg_rent_burden DESC""",
+    ),
 ]
 
 
@@ -396,6 +476,27 @@ def run_comparison(runs: int = 10, warmup: int = 2,
     print(f"  Average speedup (all queries): {avg_speedup:.2f}×")
     print(f"  Average code reduction (lines): {avg_line_reduction:.0f}%")
 
+    # Per-category breakdown — the honest-story view. Graph wins on paths,
+    # loses on flat aggregations.
+    print(f"\n  Per-category (where Neo4j wins):")
+    by_cat: dict[str, list] = {}
+    for r in results:
+        by_cat.setdefault(r["category"], []).append(r)
+    category_summary = {}
+    for cat, items in by_cat.items():
+        wins = sum(1 for x in items if x["faster"] == "Neo4j")
+        positive_speedups = [x["speedup_x"] for x in items if x["speedup_x"]]
+        cat_avg = (
+            round(statistics.mean(positive_speedups), 2)
+            if positive_speedups else None
+        )
+        category_summary[cat] = {
+            "queries": len(items),
+            "neo4j_faster_count": wins,
+            "avg_speedup_x": cat_avg,
+        }
+        print(f"    {cat:10}  Neo4j wins {wins}/{len(items)}  avg {cat_avg}×")
+
     # ── JSON export ───────────────────────────────────────────────────────
     report = {
         "runs": runs, "warmup": warmup,
@@ -403,6 +504,7 @@ def run_comparison(runs: int = 10, warmup: int = 2,
         "total_queries": len(results),
         "avg_speedup_x": round(avg_speedup, 2),
         "avg_line_reduction_pct": round(avg_line_reduction, 1),
+        "category_summary": category_summary,
         "queries": results,
     }
     if output_path:

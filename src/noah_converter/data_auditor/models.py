@@ -46,7 +46,15 @@ class RelCountResult:
     rel_type: str
     source_type: str
     neo4j_count: int
-    pg_expected: Optional[int] = None  # None if can't compute from PG
+    # Expected relationship count = source FK rows whose target row actually
+    # exists in the target table (MERGE would succeed). None if not computable.
+    pg_expected: Optional[int] = None
+    # Source FK rows that reference a target not present in the target table.
+    # These are legitimately skipped by MERGE. Reported for transparency.
+    pg_orphans: Optional[int] = None
+    # Raw count of source FK rows with both endpoints non-null (legacy metric,
+    # kept for reporting continuity).
+    pg_fk_rows: Optional[int] = None
 
     @property
     def match(self) -> bool:
@@ -60,6 +68,8 @@ class RelCountResult:
             "source_type": self.source_type,
             "neo4j_count": self.neo4j_count,
             "pg_expected": self.pg_expected,
+            "pg_orphans": self.pg_orphans,
+            "pg_fk_rows": self.pg_fk_rows,
             "match": self.match,
         }
 
@@ -153,11 +163,12 @@ class AuditReport:
 
     @property
     def overall_status(self) -> str:
-        if not self.issues:
-            return "PASS"
         if any(i.startswith("ERROR") for i in self.issues):
             return "FAIL"
-        return "WARN"
+        if any(i.startswith("WARN") for i in self.issues):
+            return "WARN"
+        # Empty, or only INFO-level notes (e.g. legitimately skipped orphan FKs)
+        return "PASS"
 
     def to_dict(self) -> dict:
         return {

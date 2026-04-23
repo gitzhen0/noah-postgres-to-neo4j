@@ -122,23 +122,59 @@ class MigrationAuditor:
                         )
                         neo4j_count = r.single()["cnt"]
 
-                    # For FK relationships we can estimate expected count from PG
-                    pg_expected = None
+                    pg_expected: Optional[int] = None
+                    pg_orphans: Optional[int] = None
+                    pg_fk_rows: Optional[int] = None
+
                     if (
                         rel.source_type == RelationshipSourceType.FOREIGN_KEY
                         and rel.source_table
                         and rel.from_id_column
                         and rel.to_id_column
                     ):
+                        # Resolve the target table + merge key so we can do a
+                        # join-based existence check. Expected relationship
+                        # count = source rows whose target actually exists.
+                        target_node = self.schema.get_node_by_label(rel.to_label)
+                        target_table = target_node.source_table if target_node else None
+                        target_merge_col = (
+                            target_node.merge_keys[0]
+                            if target_node and target_node.merge_keys
+                            else None
+                        )
+
                         try:
                             cur.execute(
                                 f"SELECT COUNT(*) FROM {rel.source_table} "
                                 f"WHERE {rel.from_id_column} IS NOT NULL "
                                 f"AND {rel.to_id_column} IS NOT NULL"
                             )
-                            pg_expected = cur.fetchone()[0]
+                            pg_fk_rows = cur.fetchone()[0]
                         except Exception as e:
                             logger.warning(f"Could not count PG rows for {rel.type}: {e}")
+
+                        if target_table and target_merge_col:
+                            try:
+                                cur.execute(
+                                    f"SELECT COUNT(*) "
+                                    f"FROM {rel.source_table} s "
+                                    f"JOIN {target_table} t "
+                                    f"  ON s.{rel.to_id_column}::text = t.{target_merge_col}::text "
+                                    f"WHERE s.{rel.from_id_column} IS NOT NULL "
+                                    f"  AND s.{rel.to_id_column} IS NOT NULL"
+                                )
+                                pg_expected = cur.fetchone()[0]
+                                if pg_fk_rows is not None and pg_expected is not None:
+                                    pg_orphans = pg_fk_rows - pg_expected
+                            except Exception as e:
+                                logger.warning(
+                                    f"Could not compute joined expected count for "
+                                    f"{rel.type} (fallback to raw FK count): {e}"
+                                )
+                                # Fallback: naive count — keeps prior behavior.
+                                pg_expected = pg_fk_rows
+                        else:
+                            pg_expected = pg_fk_rows
 
                     results.append(
                         RelCountResult(
@@ -146,6 +182,8 @@ class MigrationAuditor:
                             source_type=rel.source_type.value,
                             neo4j_count=neo4j_count,
                             pg_expected=pg_expected,
+                            pg_orphans=pg_orphans,
+                            pg_fk_rows=pg_fk_rows,
                         )
                     )
         return results
@@ -350,6 +388,11 @@ class MigrationAuditor:
                 issues.append(
                     f"WARN: {rc.rel_type} count mismatch — "
                     f"PG expected={rc.pg_expected:,}, Neo4j={rc.neo4j_count:,} ({diff:+,})"
+                )
+            elif rc.pg_orphans is not None and rc.pg_orphans > 0:
+                issues.append(
+                    f"INFO: {rc.rel_type} — {rc.pg_orphans:,} FK row(s) skipped "
+                    f"because target not present in target table (expected behavior)"
                 )
 
         for sc in samples:

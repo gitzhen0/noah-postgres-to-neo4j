@@ -353,6 +353,54 @@ nodes:
     source_column: geometry
     transformation: ST_Area(geometry::geography) / 1000000.0
   geometry_column: geometry
+- label: Demographic
+  source_table: zip_demographic
+  primary_property: zip_code
+  has_geometry: false
+  merge_keys:
+  - zip_code
+  indexes: []
+  properties:
+  - name: zip_code
+    type: string
+    nullable: false
+    source_column: zip_code
+    source_type: character varying
+  - name: total_population
+    type: integer
+    nullable: true
+    source_column: total_population
+    source_type: integer
+  - name: median_age
+    type: float
+    nullable: true
+    source_column: median_age
+    source_type: numeric
+  - name: total_housing_units
+    type: integer
+    nullable: true
+    source_column: total_housing_units
+    source_type: integer
+  - name: owner_occupied_units
+    type: integer
+    nullable: true
+    source_column: owner_occupied_units
+    source_type: integer
+  - name: renter_occupied_units
+    type: integer
+    nullable: true
+    source_column: renter_occupied_units
+    source_type: integer
+  - name: pct_renter_occupied
+    type: float
+    nullable: true
+    source_column: pct_renter_occupied
+    source_type: numeric
+  - name: acs_vintage
+    type: string
+    nullable: true
+    source_column: acs_vintage
+    source_type: character varying
 relationships:
 - type: LOCATED_IN_ZIP
   from_label: HousingProject
@@ -364,6 +412,17 @@ relationships:
   to_column: postcode
   from_id_column: id
   to_id_column: postcode
+  properties: []
+- type: HAS_DEMOGRAPHICS
+  from_label: ZipCode
+  to_label: Demographic
+  source_type: foreign_key
+  bidirectional: false
+  source_table: zip_demographic
+  from_column: zip_code
+  to_column: zip_code
+  from_id_column: zip_code
+  to_id_column: zip_code
   properties: []
 - type: HAS_AFFORDABILITY_DATA
   from_label: ZipCode

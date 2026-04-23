@@ -225,7 +225,33 @@ class GenericMigrator:
         conn, cur = self._pg_cursor()
         cur.execute(sql)
         pairs = [{"from_id": r["from_id"], "to_id": r["to_id"]} for r in cur.fetchall()]
+
+        # Pre-flight: count FK rows whose target doesn't exist in the target
+        # source table. These get legitimately skipped by MERGE (no target
+        # node to match) — surface them so auditors don't flag a false
+        # mismatch later.
+        orphans = 0
+        try:
+            cur.execute(
+                f"SELECT COUNT(*) "
+                f"FROM {rel.source_table} s "
+                f"LEFT JOIN {to_node.source_table} t "
+                f"  ON s.{rel.to_id_column}::text = t.{to_key}::text "
+                f"WHERE s.{rel.from_id_column} IS NOT NULL "
+                f"  AND s.{rel.to_id_column} IS NOT NULL "
+                f"  AND t.{to_key} IS NULL"
+            )
+            orphans = cur.fetchone()[0] or 0
+        except Exception as e:
+            logger.debug(f"Orphan pre-flight for {rel.type} skipped: {e}")
         conn.close()
+
+        if orphans:
+            logger.info(
+                f"{rel.type}: {orphans} FK row(s) reference a {rel.to_label} "
+                f"not present in {to_node.source_table} — these will be "
+                f"skipped (target node does not exist)"
+            )
 
         cypher = f"""
         UNWIND $rows AS row
@@ -238,7 +264,11 @@ class GenericMigrator:
         for batch in _batches(pairs, self.batch_size):
             c = self._run(cypher, {"rows": batch})
             total += c.relationships_created
-        logger.success(f"{rel.type}: {total} relationships created")
+        expected = max(0, len(pairs) - orphans)
+        logger.success(
+            f"{rel.type}: {total} relationships created "
+            f"({expected} expected, {orphans} orphan(s) skipped)"
+        )
         return total
 
     def _migrate_rel_computed(self, rel: RelationshipType) -> int:

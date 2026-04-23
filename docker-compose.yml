@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL + PostGIS
   postgres:
@@ -8,12 +6,17 @@ services:
     environment:
       POSTGRES_DB: noah_housing
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
+      POSTGRES_PASSWORD: password123
     ports:
-      - "5432:5432"
+      # Override via POSTGRES_HOST_PORT=15432 if you already run a native
+      # PostgreSQL on 5432 (macOS/Homebrew users commonly do).
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts:/docker-entrypoint-initdb.d
+      # Full scripts directory — referenced by bootstrap via \i.
+      - ./scripts:/srv/scripts:ro
+      # Ordered init sequence (01_bootstrap.sql sources the rest).
+      - ./scripts/docker_init:/docker-entrypoint-initdb.d:ro
     networks:
       - noah_network
     healthcheck:
@@ -34,8 +37,8 @@ services:
       NEO4J_dbms_security_procedures_unrestricted: apoc.*
       NEO4J_dbms_security_procedures_allowlist: apoc.*
     ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
+      - "${NEO4J_HTTP_PORT:-7474}:7474"  # HTTP
+      - "${NEO4J_BOLT_PORT:-7687}:7687"  # Bolt
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -66,7 +69,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: noah_housing
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
+      POSTGRES_PASSWORD: password123
 
       # Optional: Pre-configure API keys (comment out for user input)
       # OPENAI_API_KEY: your-openai-key

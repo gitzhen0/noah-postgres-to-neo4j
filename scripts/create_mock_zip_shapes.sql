@@ -84,7 +84,7 @@ SET geom = ST_Envelope(
 )
 WHERE num_projects = 1;
 
-RAISE NOTICE '   ✓ Enhanced shapes for single-project ZIPs';
+DO $$ BEGIN RAISE NOTICE '   ✓ Enhanced shapes for single-project ZIPs'; END $$;
 
 \echo ''
 
@@ -109,7 +109,7 @@ FROM (
 ) subq
 WHERE z.zip_code = subq.zipcode;
 
-RAISE NOTICE '   ✓ Added borough information';
+DO $$ BEGIN RAISE NOTICE '   ✓ Added borough information'; END $$;
 
 \echo ''
 
