@@ -65,7 +65,7 @@ RETURN n.zip_code           AS zip_code,
 ORDER BY n.zip_code""",
 
         "High rent-burden ZIPs": """\
-MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 WHERE a.rent_burden_rate > 0.35
 RETURN z.zip_code          AS zip_code,
        z.borough           AS borough,
@@ -75,7 +75,7 @@ ORDER BY a.rent_burden_rate DESC
 LIMIT 20""",
 
         "Projects in high-burden tracts": """\
-MATCH (p:HousingProject)-[:IN_CENSUS_TRACT]->(r:RentBurden)
+MATCH (p:HousingProject)-[:IN_CENSUS_TRACT]->(r:CensusTract)
 WHERE r.severe_burden_rate > 0.40
 RETURN p.project_name      AS project,
        p.borough           AS borough,
@@ -85,7 +85,7 @@ ORDER BY r.severe_burden_rate DESC
 LIMIT 20""",
 
         "ZIP affordability overview": """\
-MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 RETURN z.zip_code          AS zip_code,
        z.borough           AS borough,
        a.median_income_usd AS median_income,
@@ -99,7 +99,14 @@ ORDER BY z.borough, z.zip_code""",
         selected = st.selectbox("Load example:", list(EXAMPLES.keys()), label_visibility="collapsed")
     with load_col:
         if st.button("Load →", use_container_width=True):
-            st.session_state["cypher_editor"] = EXAMPLES[selected]
+            st.session_state["_pending_cypher"] = EXAMPLES[selected]
+            st.rerun()
+
+    # Drain any pending cypher set by a button on a prior rerun (Load → /
+    # Load into editor) — must happen before the widget is instantiated,
+    # otherwise Streamlit raises "cannot be modified after widget" on assign.
+    if "_pending_cypher" in st.session_state:
+        st.session_state["cypher_editor"] = st.session_state.pop("_pending_cypher")
 
     # Seed default on first load
     if "cypher_editor" not in st.session_state:
@@ -126,7 +133,7 @@ ORDER BY z.borough, z.zip_code""",
         if st.button("Save ★", use_container_width=True):
             name = save_name.strip() or f"Query {len(list_saved()) + 1}"
             save_query(name, cypher)
-            st.toast(f'Saved "{name}"', icon="★")
+            st.toast(f'Saved "{name}"', icon="⭐")
 
     if run_btn and cypher.strip():
         try:
@@ -194,19 +201,19 @@ RETURN z, r, n
 LIMIT 20""",
 
         "Projects → ZIP (top 30 by units)": """\
-MATCH (p:HousingProject)-[r:LOCATED_IN_ZIP]->(z:ZipCode)
+MATCH (p:HousingProject)-[r:LOCATED_IN]->(z:ZipCode)
 WHERE p.total_units > 200
 RETURN p, r, z
 ORDER BY p.total_units DESC
 LIMIT 30""",
 
         "ZIP → Affordability (Bronx)": """\
-MATCH (z:ZipCode)-[r:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode)-[r:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 WHERE z.borough = 'Bronx'
 RETURN z, r, a""",
 
         "Projects in high-burden tracts": """\
-MATCH (p:HousingProject)-[r:IN_CENSUS_TRACT]->(t:RentBurden)
+MATCH (p:HousingProject)-[r:IN_CENSUS_TRACT]->(t:CensusTract)
 WHERE t.severe_burden_rate > 0.45
 RETURN p, r, t
 LIMIT 40""",
@@ -215,14 +222,14 @@ LIMIT 40""",
     NODE_COLORS = {
         "HousingProject":        "#C1440E",
         "ZipCode":               "#3A86FF",
-        "AffordabilityAnalysis": "#2DC653",
-        "RentBurden":            "#9B59B6",
+        "AffordabilityZone": "#2DC653",
+        "CensusTract":            "#9B59B6",
     }
     NODE_SIZES = {
         "HousingProject": 15,
         "ZipCode":        20,
-        "AffordabilityAnalysis": 18,
-        "RentBurden":     16,
+        "AffordabilityZone": 18,
+        "CensusTract":     16,
     }
 
     gcol1, gcol2 = st.columns([3, 1])
@@ -231,7 +238,11 @@ LIMIT 40""",
                                   label_visibility="collapsed", key="g_ex_select")
     with gcol2:
         if st.button("Load →", key="g_load", use_container_width=True):
-            st.session_state["graph_cypher"] = GRAPH_EXAMPLES[g_selected]
+            st.session_state["_pending_graph_cypher"] = GRAPH_EXAMPLES[g_selected]
+            st.rerun()
+
+    if "_pending_graph_cypher" in st.session_state:
+        st.session_state["graph_cypher"] = st.session_state.pop("_pending_graph_cypher")
 
     if "graph_cypher" not in st.session_state:
         st.session_state["graph_cypher"] = GRAPH_EXAMPLES[list(GRAPH_EXAMPLES.keys())[0]]
@@ -345,8 +356,9 @@ with tab_saved:
                 load_btn, del_btn, _ = st.columns([1, 1, 4])
                 with load_btn:
                     if st.button("Load into editor", key=f"load_{q['name']}"):
-                        st.session_state["cypher_editor"] = q["cypher"]
+                        st.session_state["_pending_cypher"] = q["cypher"]
                         st.toast(f'Loaded "{q["name"]}"')
+                        st.rerun()
                 with del_btn:
                     if st.button("Delete", key=f"del_{q['name']}"):
                         delete_query(q["name"])
@@ -383,7 +395,7 @@ with tab_schema:
                 ["borough", "center_lat", "center_lon", "area_km2"],
             ),
             (
-                "AffordabilityAnalysis",
+                "AffordabilityZone",
                 "zip_code",
                 "string",
                 [
@@ -393,7 +405,7 @@ with tab_schema:
                 ],
             ),
             (
-                "RentBurden",
+                "CensusTract",
                 "geo_id",
                 "string — Census GEOID",
                 [
@@ -417,20 +429,20 @@ with tab_schema:
 
         rels_info = [
             (
-                "LOCATED_IN_ZIP",
+                "LOCATED_IN",
                 "HousingProject", "ZipCode",
                 "–",
                 "FK: postcode → zip_code",
             ),
             (
                 "HAS_AFFORDABILITY_DATA",
-                "ZipCode", "AffordabilityAnalysis",
+                "ZipCode", "AffordabilityZone",
                 "–",
                 "FK: zip_code → zip_code",
             ),
             (
                 "IN_CENSUS_TRACT",
-                "HousingProject", "RentBurden",
+                "HousingProject", "CensusTract",
                 "–",
                 "Computed: borough + census_tract → geo_id",
             ),
@@ -441,10 +453,10 @@ with tab_schema:
                 "Spatial — undirected, use -[:NEIGHBORS]-",
             ),
             (
-                "CONTAINS_TRACT",
-                "ZipCode", "RentBurden",
-                "overlap_area_km2 · tract_coverage_ratio",
-                "Spatial intersection",
+                "HAS_DEMOGRAPHICS",
+                "ZipCode", "Demographic",
+                "—",
+                "FK — ZipCode.zip_code → Demographic.zip_code",
             ),
         ]
 

@@ -128,7 +128,7 @@ with t1:
         threshold = t1_threshold / 100.0
         if t1_borough == "All":
             cypher = """
-MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 WHERE a.rent_burden_rate > $threshold
 RETURN z.borough           AS borough,
        z.zip_code          AS zip_code,
@@ -140,7 +140,7 @@ ORDER BY a.rent_burden_rate DESC
             params = {"threshold": threshold}
         else:
             cypher = """
-MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 WHERE z.borough = $borough AND a.rent_burden_rate > $threshold
 RETURN z.zip_code          AS zip_code,
        a.rent_burden_rate  AS rent_burden_rate,
@@ -183,7 +183,7 @@ with t2:
             if "1 hop" in t2_hops:
                 cypher = """
 MATCH (z:ZipCode {zip_code: $zip_code})-[:NEIGHBORS]-(n:ZipCode)
-      <-[:LOCATED_IN_ZIP]-(p:HousingProject)
+      <-[:LOCATED_IN]-(p:HousingProject)
 RETURN p.project_name  AS project_name,
        p.borough        AS borough,
        p.total_units    AS total_units,
@@ -194,7 +194,7 @@ LIMIT 100
             else:
                 cypher = """
 MATCH (z:ZipCode {zip_code: $zip_code})-[:NEIGHBORS*1..2]-(n:ZipCode)
-      <-[:LOCATED_IN_ZIP]-(p:HousingProject)
+      <-[:LOCATED_IN]-(p:HousingProject)
 WHERE n.zip_code <> $zip_code
 RETURN DISTINCT p.project_name AS project_name,
        p.borough               AS borough,
@@ -226,7 +226,7 @@ with t3:
         threshold = t3_threshold / 100.0
         if t3_borough == "All":
             cypher = """
-MATCH (p:HousingProject)-[:IN_CENSUS_TRACT]->(r:RentBurden)
+MATCH (p:HousingProject)-[:IN_CENSUS_TRACT]->(r:CensusTract)
 WHERE r.severe_burden_rate > $threshold
 RETURN p.project_name        AS project_name,
        p.borough              AS borough,
@@ -239,7 +239,7 @@ LIMIT 100
             params = {"threshold": threshold}
         else:
             cypher = """
-MATCH (p:HousingProject)-[:IN_CENSUS_TRACT]->(r:RentBurden)
+MATCH (p:HousingProject)-[:IN_CENSUS_TRACT]->(r:CensusTract)
 WHERE p.borough = $borough AND r.severe_burden_rate > $threshold
 RETURN p.project_name        AS project_name,
        p.total_units          AS total_units,
@@ -274,7 +274,7 @@ with t4:
     if t4_run:
         field, is_pct = INDICATORS[t4_ind]
         cypher = f"""
-MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 WHERE a.{field} IS NOT NULL
 RETURN z.borough              AS borough,
        avg(a.{field})         AS avg_value,

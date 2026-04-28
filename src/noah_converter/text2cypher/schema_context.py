@@ -132,10 +132,9 @@ class SchemaContextBuilder:
 - ZipCode.zip_code is a 5-digit string (e.g., '10001')
 - HousingProject.postcode links to ZipCode.zip_code
 - HousingProject.db_id is the unique integer merge key
-- AffordabilityAnalysis rates (rent_burden_rate, severe_burden_rate, rent_to_income_ratio) are decimals (e.g., 0.35 = 35%)
-- RentBurden.geo_id is a Census tract GEOID string
+- AffordabilityZone rates (rent_burden_rate, severe_burden_rate, rent_to_income_ratio) are decimals (e.g., 0.35 = 35%)
+- CensusTract.geo_id is a Census tract GEOID string
 - NEIGHBORS is undirected (use -[:NEIGHBORS]- without arrow for traversal)
-- CONTAINS_TRACT has overlap_area_km2 and tract_coverage_ratio properties
 """
         return context
 
@@ -155,7 +154,7 @@ ORDER BY neighbor.zip_code
 ### Example 2: Housing projects in a ZIP code
 Question: "Show all housing projects in ZIP code 11106"
 ```cypher
-MATCH (p:HousingProject)-[:LOCATED_IN_ZIP]->(z:ZipCode {zip_code: '11106'})
+MATCH (p:HousingProject)-[:LOCATED_IN]->(z:ZipCode {zip_code: '11106'})
 RETURN p.project_name, p.total_units, p.borough
 ORDER BY p.total_units DESC
 ```
@@ -163,7 +162,7 @@ ORDER BY p.total_units DESC
 ### Example 3: Affordability data by borough
 Question: "What are the rent burden rates in Queens ZIP codes?"
 ```cypher
-MATCH (z:ZipCode {borough: 'Queens'})-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode {borough: 'Queens'})-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 RETURN z.zip_code, a.median_income_usd, a.median_rent_usd, a.rent_burden_rate
 ORDER BY a.rent_burden_rate DESC
 ```
@@ -172,7 +171,7 @@ ORDER BY a.rent_burden_rate DESC
 Question: "Find housing projects in ZIP codes neighboring 10001"
 ```cypher
 MATCH (start:ZipCode {zip_code: '10001'})-[:NEIGHBORS]-(neighbor:ZipCode)
-MATCH (p:HousingProject)-[:LOCATED_IN_ZIP]->(neighbor)
+MATCH (p:HousingProject)-[:LOCATED_IN]->(neighbor)
 RETURN neighbor.zip_code, count(p) AS project_count, sum(p.total_units) AS total_units
 ORDER BY project_count DESC
 ```
@@ -188,7 +187,7 @@ ORDER BY project_count DESC
 ### Example 6: Census tracts with high rent burden
 Question: "Show census tracts with severe rent burden over 30%"
 ```cypher
-MATCH (r:RentBurden)
+MATCH (r:CensusTract)
 WHERE r.severe_burden_rate > 0.30
 RETURN r.geo_id, r.tract_name, r.severe_burden_rate, r.rent_burden_rate
 ORDER BY r.severe_burden_rate DESC
@@ -198,7 +197,7 @@ LIMIT 20
 ### Example 7: ZIP codes with high burden and low income
 Question: "Find ZIP codes with high rent burden and low median income"
 ```cypher
-MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 WHERE a.rent_burden_rate > 0.35 AND a.median_income_usd < 50000
 RETURN z.zip_code, z.borough, a.median_income_usd, a.rent_burden_rate, a.median_rent_usd
 ORDER BY a.rent_burden_rate DESC
@@ -207,7 +206,7 @@ ORDER BY a.rent_burden_rate DESC
 ### Example 8: Projects in high-burden census tracts
 Question: "Find housing projects in census tracts with severe rent burden above 40%"
 ```cypher
-MATCH (p:HousingProject)-[:IN_CENSUS_TRACT]->(r:RentBurden)
+MATCH (p:HousingProject)-[:IN_CENSUS_TRACT]->(r:CensusTract)
 WHERE r.severe_burden_rate > 0.40
 RETURN p.project_name, p.borough, p.postcode, r.geo_id, r.severe_burden_rate
 ORDER BY r.severe_burden_rate DESC
@@ -217,7 +216,7 @@ LIMIT 20
 ### Example 9: Most affordable ZIP codes by rent burden
 Question: "Which ZIP codes have the lowest rent burden rate?"
 ```cypher
-MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
 WHERE a.rent_burden_rate IS NOT NULL
 RETURN z.zip_code, z.borough, a.rent_burden_rate, a.severe_burden_rate, a.median_income_usd
 ORDER BY a.rent_burden_rate ASC

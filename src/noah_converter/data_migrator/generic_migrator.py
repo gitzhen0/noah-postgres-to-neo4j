@@ -103,6 +103,10 @@ class GenericMigrator:
             result = s.run(cypher, params or {})
             return result.consume().counters
 
+    def _fetch(self, cypher: str, params: dict = None):
+        with self.driver.session() as s:
+            return [dict(r) for r in s.run(cypher, params or {})]
+
     # ── Schema setup ────────────────────────────────────────────────────────
 
     def setup_schema(self):
@@ -345,6 +349,16 @@ class GenericMigrator:
         if clear:
             logger.warning("Clearing Neo4j database...")
             self._run("MATCH (n) DETACH DELETE n")
+            # Constraints/indexes survive DETACH DELETE, so without dropping
+            # them the Browser sidebar accumulates ghost labels across
+            # migrate/clear cycles. Drop everything except the LOOKUP indexes
+            # Neo4j manages internally.
+            for c in self._fetch("SHOW CONSTRAINTS YIELD name"):
+                self._run(f"DROP CONSTRAINT {c['name']} IF EXISTS")
+            for i in self._fetch(
+                "SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP'"
+            ):
+                self._run(f"DROP INDEX {i['name']} IF EXISTS")
 
         logger.info("=" * 55)
         logger.info("Generic PostgreSQL → Neo4j Migration")

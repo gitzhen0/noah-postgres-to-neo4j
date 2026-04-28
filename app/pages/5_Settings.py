@@ -126,8 +126,8 @@ with status_col:
                     m1.metric("Housing Projects", f"{stats.get('n_HousingProject', 0):,}")
                     m2.metric("ZIP Codes",        f"{stats.get('n_ZipCode', 0):,}")
                     m3, m4 = st.columns(2)
-                    m3.metric("Census Tracts",    f"{stats.get('n_RentBurden', 0):,}")
-                    m4.metric("Connections",      f"{sum(stats.get(f'r_{r}', 0) for r in ['LOCATED_IN_ZIP','NEIGHBORS','IN_CENSUS_TRACT','CONTAINS_TRACT','HAS_AFFORDABILITY_DATA']):,}")
+                    m3.metric("Census Tracts",    f"{stats.get('n_CensusTract', 0):,}")
+                    m4.metric("Connections",      f"{sum(stats.get(f'r_{r}', 0) for r in ['LOCATED_IN','NEIGHBORS','IN_CENSUS_TRACT','HAS_AFFORDABILITY_DATA','HAS_DEMOGRAPHICS']):,}")
                 else:
                     st.warning("Connected but no data found.")
             except Exception as exc:

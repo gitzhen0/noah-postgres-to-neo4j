@@ -51,10 +51,9 @@ stats = get_db_stats()
 total_rels = sum(
     stats.get(f"r_{r}", 0)
     for r in [
-        "LOCATED_IN_ZIP",
+        "LOCATED_IN",
         "NEIGHBORS",
         "IN_CENSUS_TRACT",
-        "CONTAINS_TRACT",
         "HAS_AFFORDABILITY_DATA",
         "HAS_DEMOGRAPHICS",
     ]
@@ -64,8 +63,8 @@ stat_items = [
     ("Housing Projects", stats.get("n_HousingProject", "—"), "buildings across 5 boroughs"),
     ("ZIP Codes",        stats.get("n_ZipCode", "—"),         "NYC postal boundaries"),
     ("Demographics",     stats.get("n_Demographic", "—"),     "ACS 2022 population + age"),
-    ("Census Tracts",   stats.get("n_RentBurden", "—"),       "tract-level rent burden"),
-    ("Affordability",   stats.get("n_AffordabilityAnalysis", "—"), "ZIP income + rent data"),
+    ("Census Tracts",   stats.get("n_CensusTract", "—"),       "tract-level rent burden"),
+    ("Affordability",   stats.get("n_AffordabilityZone", "—"), "ZIP income + rent data"),
     ("Connections",     total_rels or "—",                    "graph relationships"),
 ]
 
@@ -156,15 +155,16 @@ with right:
         <b style="color:#555;font-size:0.7rem;text-transform:uppercase;letter-spacing:.05em">Nodes</b><br>
         <span class="schema-node">HousingProject</span>
         <span class="schema-node">ZipCode</span>
-        <span class="schema-node">AffordabilityAnalysis</span>
-        <span class="schema-node">RentBurden</span>
+        <span class="schema-node">AffordabilityZone</span>
+        <span class="schema-node">CensusTract</span>
+        <span class="schema-node">Demographic</span>
         <br><br>
         <b style="color:#555;font-size:0.7rem;text-transform:uppercase;letter-spacing:.05em">Relationships</b><br>
-        <span class="schema-rel">LOCATED_IN_ZIP</span>
+        <span class="schema-rel">LOCATED_IN</span>
         <span class="schema-rel">NEIGHBORS</span>
         <span class="schema-rel">IN_CENSUS_TRACT</span>
-        <span class="schema-rel">CONTAINS_TRACT</span>
         <span class="schema-rel">HAS_AFFORDABILITY_DATA</span>
+        <span class="schema-rel">HAS_DEMOGRAPHICS</span>
         </div>
         """,
         unsafe_allow_html=True,

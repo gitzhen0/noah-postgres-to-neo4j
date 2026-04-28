@@ -1,0 +1,27 @@
+[
+  {
+    "name": "query 1",
+    "cypher": "MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)\nWHERE a.rent_burden_rate > 0.59\nRETURN z.zip_code          AS zip_code,\n       z.borough           AS borough,\n       a.rent_burden_rate  AS rent_burden,\n       a.median_income_usd AS median_income\nORDER BY a.rent_burden_rate DESC\nLIMIT 30",
+    "saved_at": "2026-04-28 02:24"
+  },
+  {
+    "name": "Query 2",
+    "cypher": "MATCH (p:HousingProject)\nRETURN p.borough            AS borough,\n       count(p)             AS projects,\n       sum(p.total_units)   AS total_units\nORDER BY projects DESC",
+    "saved_at": "2026-04-28 02:26"
+  },
+  {
+    "name": "Query 3",
+    "cypher": "MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)\nWHERE a.rent_burden_rate > 0.40\nRETURN z.zip_code          AS zip_code,\n       z.borough           AS borough,\n       a.rent_burden_rate  AS rent_burden,\n       a.median_income_usd AS median_income\nORDER BY a.rent_burden_rate DESC\nLIMIT 20",
+    "saved_at": "2026-04-28 02:43"
+  },
+  {
+    "name": "Query 4",
+    "cypher": "MATCH (p:HousingProject)\nRETURN p.borough            AS borough,\n       count(p)             AS projects,\n       sum(p.total_units)   AS total_units\nORDER BY projects DESC",
+    "saved_at": "2026-04-28 02:49"
+  },
+  {
+    "name": "Query 5",
+    "cypher": "MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)\nWHERE a.rent_burden_rate > 0.44\nRETURN z.zip_code          AS zip_code,\n       z.borough           AS borough,\n       a.rent_burden_rate  AS rent_burden,\n       a.median_income_usd AS median_income\nORDER BY a.rent_burden_rate DESC\nLIMIT 20",
+    "saved_at": "2026-04-28 02:49"
+  }
+]

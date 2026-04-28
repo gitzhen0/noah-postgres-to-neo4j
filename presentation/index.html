@@ -615,7 +615,7 @@ svg{max-width:100%;height:auto}
         <text x="85" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#4581c3">Neo4j</text>
         <text x="85" y="60" text-anchor="middle" font-size="11" fill="#475569">Knowledge Graph</text>
         <text x="85" y="85" text-anchor="middle" font-size="10" fill="#64748b">11,359 nodes</text>
-        <text x="85" y="100" text-anchor="middle" font-size="10" fill="#64748b">17,072 relationships</text>
+        <text x="85" y="100" text-anchor="middle" font-size="10" fill="#64748b">13,022 relationships</text>
       </g>
 
       <!-- Streamlit -->
@@ -669,11 +669,11 @@ svg{max-width:100%;height:auto}
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════
-     SLIDE 06  ·  GRAPH SCHEMA (5 nodes / 6 rels)
+     SLIDE 06  ·  GRAPH SCHEMA (5 nodes / 5 rels)
      ══════════════════════════════════════════════════════════════ -->
 <section class="slide chart-slide" data-title="Graph Schema">
   <div class="eyebrow">The Target Model</div>
-  <h1 class="section">5 node labels, 6 relationship types, <em>PostGIS-native</em>.</h1>
+  <h1 class="section">5 node labels, 5 relationship types, <em>PostGIS-native</em>.</h1>
 
   <div class="chart-container">
     <svg viewBox="0 0 1100 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Graph schema">
@@ -707,18 +707,18 @@ svg{max-width:100%;height:auto}
         <text y="28" text-anchor="middle" font-size="9" fill="#a7f3d0">ACS 2022</text>
       </g>
 
-      <!-- AffordabilityAnalysis (right) -->
+      <!-- AffordabilityZone (right) -->
       <g transform="translate(750,150)">
         <circle r="58" fill="#f59e0b" stroke="#f59e0b" stroke-width="2"/>
         <text y="-5" text-anchor="middle" font-size="12" font-weight="800" fill="#ffffff">Affordability</text>
-        <text y="12" text-anchor="middle" font-size="12" font-weight="800" fill="#ffffff">Analysis</text>
+        <text y="12" text-anchor="middle" font-size="12" font-weight="800" fill="#ffffff">Zone</text>
         <text y="28" text-anchor="middle" font-size="10" fill="#fef3c7">177 nodes</text>
       </g>
 
-      <!-- RentBurden (bottom right) -->
+      <!-- CensusTract (bottom right) -->
       <g transform="translate(770,380)">
         <circle r="58" fill="#dc2626" stroke="#dc2626" stroke-width="2"/>
-        <text y="-5" text-anchor="middle" font-size="13" font-weight="800" fill="#ffffff">RentBurden</text>
+        <text y="-5" text-anchor="middle" font-size="13" font-weight="800" fill="#ffffff">CensusTract</text>
         <text y="14" text-anchor="middle" font-size="11" fill="#fee2e2">2,225 nodes</text>
         <text y="28" text-anchor="middle" font-size="9" fill="#fecaca">census tracts</text>
       </g>
@@ -728,9 +728,9 @@ svg{max-width:100%;height:auto}
       <text x="280" y="185" font-size="10" font-weight="600" fill="#334155">NEIGHBORS</text>
       <text x="280" y="200" font-size="9" fill="#64748b">392 · bidirectional</text>
 
-      <!-- HousingProject → ZipCode (LOCATED_IN_ZIP) -->
+      <!-- HousingProject → ZipCode (LOCATED_IN) -->
       <path d="M 192 245 L 385 245" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)"/>
-      <text x="288" y="268" font-size="10" font-weight="600" text-anchor="middle" fill="#334155">LOCATED_IN_ZIP</text>
+      <text x="288" y="268" font-size="10" font-weight="600" text-anchor="middle" fill="#334155">LOCATED_IN</text>
       <text x="288" y="284" font-size="9" text-anchor="middle" fill="#64748b">6,851 · 35 orphan</text>
 
       <!-- ZipCode → Demographic (HAS_DEMOGRAPHICS) -->
@@ -738,17 +738,12 @@ svg{max-width:100%;height:auto}
       <text x="460" y="150" font-size="10" font-weight="600" fill="#334155">HAS_DEMOGRAPHICS</text>
       <text x="460" y="165" font-size="9" fill="#64748b">176 · new in v2</text>
 
-      <!-- ZipCode → AffordabilityAnalysis (HAS_AFFORDABILITY_DATA) — sweep to the right -->
+      <!-- ZipCode → AffordabilityZone (HAS_AFFORDABILITY_DATA) — sweep to the right -->
       <path d="M 515 205 L 700 165" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)"/>
       <text x="640" y="200" font-size="10" font-weight="600" text-anchor="middle" fill="#334155">HAS_AFFORDABILITY_DATA</text>
       <text x="640" y="215" font-size="9" text-anchor="middle" fill="#64748b">177</text>
 
-      <!-- ZipCode → RentBurden (CONTAINS_TRACT, spatial) -->
-      <path d="M 515 265 L 720 350" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)"/>
-      <text x="580" y="330" font-size="10" font-weight="600" fill="#334155">CONTAINS_TRACT</text>
-      <text x="580" y="345" font-size="9" fill="#64748b">4,050 · ST_Intersects</text>
-
-      <!-- HousingProject → RentBurden (IN_CENSUS_TRACT, computed) -->
+      <!-- HousingProject → CensusTract (IN_CENSUS_TRACT, computed) -->
       <path d="M 170 290 Q 400 480 715 390" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#sm-arrow)" stroke-dasharray="4 3"/>
       <text x="440" y="465" font-size="10" font-weight="600" fill="#334155">IN_CENSUS_TRACT</text>
       <text x="440" y="480" font-size="9" fill="#64748b">5,426 · borough+tract → geo_id (computed)</text>
@@ -767,7 +762,7 @@ svg{max-width:100%;height:auto}
     <ul>
       <li>ZipCode is the hub — everything radiates from it.</li>
       <li>NEIGHBORS is self-referential and bidirectional; enables multi-hop spatial queries.</li>
-      <li>35 orphan postcodes on LOCATED_IN_ZIP are legit data-quality issues outside NYC coverage — documented in the audit, not data loss.</li>
+      <li>35 orphan postcodes on LOCATED_IN are legit data-quality issues outside NYC coverage — documented in the audit, not data loss.</li>
       <li>Demographic is new in v2 (post-audit-review); matches the original capstone spec exactly.</li>
     </ul>
   </aside>
@@ -806,14 +801,14 @@ svg{max-width:100%;height:auto}
 <span class="m">[INFO] Setting up constraints + indexes</span>
 <span class="o">✓</span> HousingProject         8,604 nodes
 <span class="o">✓</span> ZipCode                  177 · Demographic 176
-<span class="o">✓</span> AffordabilityAnalysis    177 · RentBurden 2,225
-<span class="o">✓</span> LOCATED_IN_ZIP         6,851  (35 orphan skipped)
+<span class="o">✓</span> AffordabilityZone    177 · CensusTract 2,225
+<span class="o">✓</span> LOCATED_IN         6,851  (35 orphan skipped)
 <span class="o">✓</span> HAS_DEMOGRAPHICS         176  <span class="m">← new in v2</span>
 <span class="o">✓</span> HAS_AFFORDABILITY_DATA   177
 <span class="o">✓</span> IN_CENSUS_TRACT        5,426
-<span class="o">✓</span> NEIGHBORS                392 · CONTAINS_TRACT 4,050
+<span class="o">✓</span> NEIGHBORS                392
 
-<b>✅ 11,359 nodes · 17,072 relationships</b>
+<b>✅ 11,359 nodes · 13,022 relationships</b>
 <span class="m">real  7.89s</span></pre>
     </div>
 
@@ -824,7 +819,7 @@ svg{max-width:100%;height:auto}
 <span class="o">✓ MATCH</span>  all 5 labels, PG↔Neo4j parity
 
 <span class="m">Relationship Counts</span>
-<span class="o">✓ MATCH</span>  LOCATED_IN_ZIP    6,851 / 6,851
+<span class="o">✓ MATCH</span>  LOCATED_IN    6,851 / 6,851
 <span class="o">✓ MATCH</span>  HAS_DEMOGRAPHICS    176 /   176
 <span class="o">✓ MATCH</span>  HAS_AFFORDABILITY   177 /   177
 <span class="o">✓ MATCH</span>  + 3 computed/spatial rels
@@ -833,7 +828,7 @@ svg{max-width:100%;height:auto}
 <span class="o">✓ 100.0%</span>  on all 5 labels
 
 <span class="m">Issues</span>
-<span class="o">INFO</span>  LOCATED_IN_ZIP — 35 orphan FKs
+<span class="o">INFO</span>  LOCATED_IN — 35 orphan FKs
       (expected; postcodes outside NYC coverage)
 
 <b>Overall Status: PASS</b>
@@ -842,7 +837,7 @@ svg{max-width:100%;height:auto}
   </div>
 
   <div class="meta">
-    <b>Total:</b> migrate 7.89s + audit 1.32s ≈ <b>~10 seconds</b> for 11k nodes / 17k relationships /
+    <b>Total:</b> migrate 7.89s + audit 1.32s ≈ <b>~10 seconds</b> for 11k nodes / 13k relationships /
     100% integrity / sample-verified. Idempotent — safe to rerun.
   </div>
   <aside class="notes-content" hidden>
@@ -872,7 +867,7 @@ svg{max-width:100%;height:auto}
       </tr>
     </thead>
     <tbody>
-      <tr><td><code>LOCATED_IN_ZIP</code></td><td>FK</td>
+      <tr><td><code>LOCATED_IN</code></td><td>FK</td>
         <td class="n pg">6,851 expected</td><td class="n n4j">6,851</td>
         <td class="n">35 (INFO)</td><td><span class="badge green">✓ MATCH</span></td></tr>
       <tr class="win"><td><code>HAS_DEMOGRAPHICS</code></td><td>FK · new</td>
@@ -886,9 +881,6 @@ svg{max-width:100%;height:auto}
         <td class="n">—</td><td><span class="badge green">✓ OK</span></td></tr>
       <tr><td><code>NEIGHBORS</code></td><td>Spatial</td>
         <td class="n pg">N/A</td><td class="n n4j">392</td>
-        <td class="n">—</td><td><span class="badge green">✓ OK</span></td></tr>
-      <tr><td><code>CONTAINS_TRACT</code></td><td>Spatial</td>
-        <td class="n pg">N/A</td><td class="n n4j">4,050</td>
         <td class="n">—</td><td><span class="badge green">✓ OK</span></td></tr>
     </tbody>
   </table>
@@ -1182,7 +1174,7 @@ svg{max-width:100%;height:auto}
       <tbody>
         <tr class="reference-row">
           <td><code>noah</code></td><td>NYC housing · PostGIS</td>
-          <td class="n">5</td><td class="n">11,359</td><td class="n">17,072</td>
+          <td class="n">5</td><td class="n">11,359</td><td class="n">13,022</td>
           <td class="n">7.89 s</td><td class="n">35 INFO*</td>
         </tr>
         <tr>
@@ -1318,15 +1310,6 @@ svg{max-width:100%;height:auto}
         <b>35 housing projects carry postcodes outside NYC's 177-ZIP set</b> (adjacent NJ/PA,
         PO boxes). Documented in audit; no relationship created. Reasonable engineering call —
         silently inventing a ZIP node for them would be worse.
-      </div>
-    </li>
-    <li>
-      <span class="tag">Data substitution</span>
-      <div class="body">
-        <b>Two AffordabilityAnalysis properties are null</b> (<code>median_rent_usd</code>,
-        <code>rent_to_income_ratio</code>): original spec called for StreetEasy's proprietary
-        feed. Substituted ACS 2022 B25070 rent-burden rate after sponsor sign-off — equivalent
-        policy signal, publicly available.
       </div>
     </li>
     <li>

@@ -8,8 +8,8 @@ import re
 _NODE_COLORS = {
     "HousingProject":        "#C1440E",
     "ZipCode":               "#3A86FF",
-    "AffordabilityAnalysis": "#2DC653",
-    "RentBurden":            "#9B59B6",
+    "AffordabilityZone": "#2DC653",
+    "CensusTract":            "#9B59B6",
 }
 _DEFAULT_COLOR = "#888888"
 

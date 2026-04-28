@@ -112,7 +112,7 @@ st.markdown("#### Rent Burden & Median Income by Borough")
 st.caption("Average across ZIP codes with affordability data")
 
 df_burden = _q("""
-    MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+    MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
     WHERE a.rent_burden_rate IS NOT NULL
     RETURN z.borough                      AS borough,
            avg(a.rent_burden_rate) * 100  AS avg_rent_burden_pct,
@@ -177,7 +177,7 @@ st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 st.markdown("#### Top 25 ZIP Codes by Housing Projects")
 
 df_zips = _q("""
-    MATCH (p:HousingProject)-[:LOCATED_IN_ZIP]->(z:ZipCode)
+    MATCH (p:HousingProject)-[:LOCATED_IN]->(z:ZipCode)
     RETURN z.zip_code         AS zip_code,
            z.borough          AS borough,
            count(p)           AS projects,
@@ -220,8 +220,8 @@ st.caption(
 )
 
 df_scatter = _q("""
-    MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
-    OPTIONAL MATCH (p:HousingProject)-[:LOCATED_IN_ZIP]->(z)
+    MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
+    OPTIONAL MATCH (p:HousingProject)-[:LOCATED_IN]->(z)
     WITH z, a, count(p) AS project_count
     WHERE a.median_income_usd IS NOT NULL
       AND a.rent_burden_rate  IS NOT NULL
@@ -277,7 +277,7 @@ st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 st.markdown("#### Distribution of ZIP-Level Rent Burden")
 
 df_hist = _q("""
-    MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityAnalysis)
+    MATCH (z:ZipCode)-[:HAS_AFFORDABILITY_DATA]->(a:AffordabilityZone)
     WHERE a.rent_burden_rate IS NOT NULL
     RETURN z.borough           AS borough,
            a.rent_burden_rate * 100 AS rent_burden_pct
